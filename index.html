@@ -1,0 +1,1836 @@
+
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FK Junior Děčín – Rozpis sportovišť</title>
+  <style>
+    :root {
+      --blue: #17469b;
+      --blue-dark: #0f3272;
+      --ink: #18253a;
+      --muted: #66758b;
+      --line: #dce4ef;
+      --page: #f2f5f9;
+      --shadow: 0 10px 28px rgba(22, 49, 95, .12);
+      --slot-height: 42px;
+      --header-height: 60px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    button, select, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 3px solid rgba(23, 70, 155, .35);
+      outline-offset: 2px;
+    }
+
+    .hidden { display: none !important; }
+
+    header {
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(12, 42, 94, .24);
+    }
+
+    .topbar {
+      width: min(1480px, calc(100% - 32px));
+      min-height: 74px;
+      margin: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+    .brand-mark {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1.05;
+      text-align: center;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: .1px;
+      text-transform: uppercase;
+    }
+
+    .brand-sub {
+      margin-top: 4px;
+      color: #dbe7ff;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .9px;
+      text-transform: uppercase;
+    }
+
+    .button {
+      min-height: 38px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: #526278;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .button:hover { filter: brightness(.97); }
+    .button.primary { border-color: var(--blue); background: var(--blue); color: #fff; }
+    .button.danger { color: #a32d40; }
+    .admin-button { border-color: #fff; color: var(--blue-dark); }
+
+    main {
+      width: min(1480px, calc(100% - 32px));
+      margin: 24px auto 42px;
+    }
+
+    .page-heading {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--blue);
+      font-size: 27px;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .page-heading p { margin: 7px 0 0; color: var(--muted); font-size: 14px; }
+
+    .view-label {
+      padding: 9px 12px;
+      border-radius: 7px;
+      background: #e5f7ed;
+      color: #217849;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .view-label.admin { background: #fff1c4; color: #795700; }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(190px, 1fr) minmax(190px, 1fr) minmax(280px, 1.45fr);
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 16px;
+      padding: 15px 16px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .field { display: grid; gap: 6px; min-width: 0; }
+
+    label {
+      color: #64738a;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .48px;
+      text-transform: uppercase;
+    }
+
+    select, input, textarea {
+      width: 100%;
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    select, input { min-height: 39px; }
+    textarea { resize: vertical; }
+
+    .filter-note {
+      padding: 10px 12px;
+      border-radius: 7px;
+      background: #f1f5fb;
+      color: #596a81;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .filter-note b { color: var(--blue); }
+
+    .status {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #fff5da;
+      color: #6d4c00;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .status.error { background: #fff0f2; color: #90263b; }
+    .status .button { margin-top: 8px; }
+
+    .calendar-card {
+      overflow: hidden;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 9px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav { display: flex; gap: 6px; }
+    .nav-button { width: 37px; padding: 0; font-size: 22px; line-height: 1; }
+    .today-button { color: var(--blue); }
+
+    .range-label {
+      min-width: 225px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 11px;
+      margin-left: auto;
+      color: #617188;
+      font-size: 11px;
+    }
+
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .legend i { width: 10px; height: 10px; border-radius: 2px; background: #dceaff; }
+    .legend .match-dot { background: #fff0bd; }
+    .legend .external-dot { background: #e0f7e9; }
+    .legend .blocked-dot { background: #e8eaf0; }
+
+    .admin-panel {
+      padding: 15px 16px;
+      border-bottom: 1px solid #d8e4f7;
+      background: #f5f8ff;
+    }
+
+    .admin-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .admin-head strong { color: var(--blue); font-size: 14px; }
+    .admin-head p { margin: 5px 0 0; color: #5a6b83; font-size: 12px; line-height: 1.45; }
+
+    .team-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      min-height: 38px;
+    }
+
+    .team-chip {
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid #bcd0f3;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--blue-dark);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .team-chip:active { cursor: grabbing; }
+    .empty-teams { margin: 3px 0; color: #64738a; font-size: 12px; line-height: 1.5; }
+
+    .admin-options {
+      display: grid;
+      grid-template-columns: minmax(200px, 1fr) minmax(200px, 1fr);
+      gap: 12px;
+      margin-top: 13px;
+    }
+
+    .local-warning {
+      margin: 12px 0 0;
+      color: #795700;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .week-summary {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: #f9fbff;
+    }
+
+    .summary-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      margin-bottom: 10px;
+    }
+
+    .summary-heading h2 {
+      min-width: 0;
+      margin: 0;
+      color: var(--blue-dark);
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .summary-caption {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .summary-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .summary-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      min-width: 150px;
+      max-width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #c9d9f2;
+      border-left: 4px solid #3970cd;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      text-align: left;
+      box-shadow: 0 2px 7px rgba(22, 49, 95, .05);
+    }
+
+    .summary-pill:hover { background: #f0f6ff; }
+    .summary-pill.match { border-left-color: #d99e00; }
+    .summary-pill.external { border-left-color: #259a60; }
+    .summary-pill.blocked { border-left-color: #737f90; }
+
+    .pill-day {
+      color: #64738a;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .pill-time {
+      color: var(--blue-dark);
+      font-size: 15px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .pill-meta {
+      max-width: 260px;
+      color: #5d6c82;
+      font-size: 11px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .summary-empty {
+      margin: 0;
+      color: #64738a;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .calendar-info {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--line);
+      color: #66758c;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .calendar-info b { color: var(--blue); }
+
+    .calendar-scroll {
+      overflow: auto;
+      max-width: 100%;
+      height: calc(var(--header-height) + 12 * var(--slot-height));
+      overscroll-behavior: contain;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: 60px repeat(7, minmax(140px, 1fr));
+      grid-template-rows: var(--header-height) repeat(34, var(--slot-height));
+      min-width: 1040px;
+    }
+
+    .corner, .day-header {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+    }
+
+    .day-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-left: 1px solid var(--line);
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .day-header span {
+      display: grid;
+      place-items: center;
+      min-width: 34px;
+      height: 26px;
+      margin-top: 3px;
+      padding: 0 4px;
+      color: #738198;
+      font-size: 11px;
+    }
+
+    .day-header.is-today span {
+      border-radius: 14px;
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .time-label {
+      padding: 8px 8px 0 0;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+      color: #65738a;
+      font-size: 11px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .slot {
+      border-bottom: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .event-layer {
+      position: relative;
+      grid-column: 2 / 9;
+      grid-row: 2 / 36;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .event {
+      position: absolute;
+      overflow: hidden;
+      padding: 4px 5px;
+      border: 1px solid #b8cff8;
+      border-left: 4px solid #3970cd;
+      border-radius: 5px;
+      background: #dceaff;
+      color: #174794;
+      box-shadow: 0 1px 2px rgba(32, 67, 132, .08);
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.2;
+      pointer-events: auto;
+      text-align: left;
+    }
+
+    .event.movable {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .event.match { border-color: #efd170; border-left-color: #d99e00; background: #fff0bd; color: #795700; }
+    .event.external { border-color: #b9e6cb; border-left-color: #259a60; background: #e0f7e9; color: #176d43; }
+    .event.blocked { border-color: #cbd0da; border-left-color: #737f90; background: #e8eaf0; color: #485567; }
+
+    .event-name, .event-detail {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .event-detail { margin-top: 3px; font-size: 9px; font-weight: 700; opacity: .9; }
+
+    .drag-ghost {
+      position: fixed;
+      z-index: 50;
+      max-width: 230px;
+      padding: 8px 11px;
+      border: 1px solid #93b4ed;
+      border-radius: 7px;
+      background: #e7f0ff;
+      color: var(--blue-dark);
+      box-shadow: 0 6px 20px rgba(15, 50, 114, .22);
+      font-size: 12px;
+      font-weight: 800;
+      pointer-events: none;
+      transform: translate(12px, 12px);
+    }
+
+    .drag-ghost.invalid { border-color: #e4a4af; background: #fff0f2; color: #90263b; }
+
+    .calendar-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 13px 16px;
+      border-top: 1px solid var(--line);
+      background: #fbfcff;
+    }
+
+    .calendar-footer p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .backdrop {
+      position: fixed;
+      z-index: 20;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(11, 26, 53, .57);
+    }
+
+    .backdrop.open { display: flex; }
+
+    .modal {
+      width: min(480px, 100%);
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+      border-radius: 13px;
+      background: #fff;
+      box-shadow: 0 20px 60px rgba(8, 25, 57, .38);
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-head h2 { margin: 0; color: var(--blue); font-size: 18px; }
+
+    .close {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 6px;
+      background: #f1f4f8;
+      color: #64738a;
+      font-size: 20px;
+    }
+
+    .modal-body {
+      padding: 18px 20px 20px;
+      color: #526278;
+      font-size: 14px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .modal-body p { margin: 0 0 12px; }
+    .modal-body p:last-child { margin-bottom: 0; }
+    .modal-form { display: grid; gap: 14px; }
+    .modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+    .form-help { margin: 0; color: var(--muted); font-size: 12px; }
+    .form-error { color: #a32d40; font-size: 12px; }
+
+    .detail-list { margin: 0; }
+    .detail-list div { padding: 8px 0; border-bottom: 1px solid #edf1f6; }
+    .detail-list div:last-child { border-bottom: 0; }
+    .detail-list dt { color: #718097; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .detail-list dd { margin: 3px 0 0; color: var(--ink); white-space: pre-wrap; }
+    .detail-actions { margin-top: 16px; }
+
+    @media (max-width: 900px) {
+      .filters { grid-template-columns: 1fr 1fr; }
+      .filter-note { grid-column: 1 / -1; }
+      .page-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
+      .legend { width: 100%; margin-left: 0; }
+      .range-label { flex: 1; min-width: 180px; }
+    }
+
+    @media (max-width: 580px) {
+      .topbar, main { width: calc(100% - 20px); }
+      .topbar { min-height: 68px; }
+      .brand-mark { width: 44px; height: 44px; font-size: 8px; }
+      .brand-title { font-size: 13px; }
+      .brand-sub { font-size: 8px; }
+      .admin-button { max-width: 155px; font-size: 10px; }
+      h1 { font-size: 22px; }
+      .filters, .admin-options { grid-template-columns: 1fr; }
+      .filter-note { grid-column: auto; }
+      .summary-pill { flex: 1 1 135px; min-width: 0; }
+      .calendar-footer { align-items: stretch; flex-direction: column; }
+      .footer-actions .button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">FK<br>JUNIOR</div>
+        <div>
+          <div class="brand-title">FK Junior Děčín</div>
+          <div class="brand-sub">Týdenní rozpis sportovišť</div>
+        </div>
+      </div>
+      <button id="adminButton" class="button admin-button" type="button">ZKUŠEBNÍ ADMINISTRACE</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-heading">
+      <div>
+        <h1>Týdenní přehled</h1>
+        <p>Vyber tým a zobraz termíny a místa tréninků i zápasů.</p>
+      </div>
+      <div id="viewLabel" class="view-label">● Náhled trenéra</div>
+    </div>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <section class="filters" aria-label="Filtry rozpisu">
+      <div class="field">
+        <label for="teamFilter">Zobrazit tým</label>
+        <select id="teamFilter"><option value="">Všechny týmy</option></select>
+      </div>
+      <div class="field">
+        <label for="locationFilter">Zobrazit sportoviště</label>
+        <select id="locationFilter"><option value="">Všechna sportoviště</option></select>
+      </div>
+      <div class="filter-note"><b>Rychlý přehled:</b> vyber tým a nad kalendářem uvidíš přesné časy jeho akcí v daném týdnu.</div>
+    </section>
+
+    <section class="calendar-card" aria-label="Týdenní kalendář">
+      <div class="toolbar">
+        <div class="nav">
+          <button id="previousWeek" class="button nav-button" type="button" aria-label="Předchozí týden">‹</button>
+          <button id="todayButton" class="button today-button" type="button">Dnes</button>
+          <button id="nextWeek" class="button nav-button" type="button" aria-label="Další týden">›</button>
+        </div>
+        <div id="rangeLabel" class="range-label" aria-live="polite"></div>
+        <div class="legend" aria-label="Legenda">
+          <span><i></i>Trénink</span>
+          <span><i class="match-dot"></i>Zápas</span>
+          <span><i class="external-dot"></i>Externí pronájem</span>
+          <span><i class="blocked-dot"></i>Blokace</span>
+        </div>
+      </div>
+
+      <section id="adminPanel" class="admin-panel hidden" aria-label="Zkušební administrace">
+        <div class="admin-head">
+          <div>
+            <strong>Týmy pro rychlé přidání</strong>
+            <p>Přetáhni tým na požadovaný den a čas. Kliknutím na tým můžeš akci přidat také přes formulář.</p>
+          </div>
+          <button id="settingsButton" class="button" type="button">Nastavení týmů a délky</button>
+        </div>
+        <div id="teamList" class="team-list"></div>
+        <div class="admin-options">
+          <div class="field">
+            <label for="newLocation">Sportoviště pro novou akci</label>
+            <select id="newLocation"></select>
+          </div>
+          <div class="filter-note">
+            Akci otevřeš kliknutím. Podržením a přetažením ji přesuneš.
+            Přetažení se řídí čtvrthodinami a délka akce zůstane zachovaná.
+          </div>
+        </div>
+        <p class="local-warning">
+          Zkušební režim bez přihlášení: změny se ukládají jen v tomto prohlížeči a nesdílí se s ostatními.
+        </p>
+      </section>
+
+      <section id="weekSummary" class="week-summary" aria-labelledby="summaryTitle" aria-live="polite">
+        <div class="summary-heading">
+          <h2 id="summaryTitle">Přehled týmu</h2>
+          <span id="summaryCaption" class="summary-caption"></span>
+        </div>
+        <div id="summaryList" class="summary-list"></div>
+      </section>
+
+      <div class="calendar-info">
+        <span><b>Náhled:</b> klikni na akci nebo na její přehledovou kartu pro další informace.</span>
+        <span id="eventCount"></span>
+      </div>
+
+      <div id="calendarScroll" class="calendar-scroll" tabindex="0" aria-label="Kalendář, posuvný svisle i vodorovně">
+        <div id="calendar" class="calendar"></div>
+      </div>
+
+      <div class="calendar-footer">
+        <p>Kalendář se otevře přibližně od 14:00 do 20:00. Další hodiny zobrazíš svislým posunem; víkend je vpravo.</p>
+        <div class="footer-actions">
+          <button id="trainingHours" class="button today-button" type="button">Čas tréninků</button>
+          <button id="clearFilters" class="button today-button" type="button">Zrušit filtry</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="detailModal" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="detailTitle" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="detailTitle">Detail akce</h2>
+        <button class="close" data-close="detailModal" type="button" aria-label="Zavřít">×</button>
+      </div>
+      <div class="modal-body">
+        <dl id="detailList" class="detail-list"></dl>
+        <div id="detailActions" class="modal-actions detail-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="settingsTitle">Nastavení administrace</h2>
+        <button class="close" data-close="settingsModal" type="button" aria-label="Zavřít">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="settingsForm" class="modal-form">
+          <div class="field">
+            <label for="settingsTeams">Týmy – každý na samostatný řádek</label>
+            <textarea id="settingsTeams" rows="6" placeholder="Napiš názvy týmů"></textarea>
+            <p class="form-help">Týmy z případně připojeného zdroje se zobrazí také. Jejich názvy se tu nemění.</p>
+          </div>
+          <div class="field">
+            <label for="settingsLocations">Sportoviště – každé na samostatný řádek</label>
+            <textarea id="settingsLocations" rows="3" placeholder="Napiš názvy sportovišť"></textarea>
+          </div>
+          <div class="field">
+            <label for="settingsDuration">Výchozí délka tréninku v minutách</label>
+            <input id="settingsDuration" type="number" min="1" max="1020" step="1" required>
+            <p class="form-help">Použije se při přidání nové akce. U jednotlivé akce můžeš konec upravit.</p>
+          </div>
+          <p id="settingsError" class="form-error hidden" role="alert"></p>
+          <div class="modal-actions">
+            <button class="button" data-close="settingsModal" type="button">Zrušit</button>
+            <button class="button primary" type="submit">Uložit nastavení</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="eventModal" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="eventTitle" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="eventTitle">Nový trénink</h2>
+        <button class="close" data-close="eventModal" type="button" aria-label="Zavřít">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="eventForm" class="modal-form">
+          <div class="field">
+            <label for="eventTeam">Tým</label>
+            <select id="eventTeam" required></select>
+          </div>
+          <div class="field">
+            <label for="eventDate">Datum</label>
+            <input id="eventDate" type="date" required>
+          </div>
+          <div class="field">
+            <label for="eventStart">Začátek</label>
+            <input id="eventStart" type="time" step="60" required>
+          </div>
+          <div class="field">
+            <label for="eventEnd">Konec</label>
+            <input id="eventEnd" type="time" step="60" required>
+          </div>
+          <div class="field">
+            <label for="eventLocation">Sportoviště</label>
+            <select id="eventLocation" required></select>
+          </div>
+          <div class="field">
+            <label for="eventNote">Poznámka</label>
+            <textarea id="eventNote" rows="2"></textarea>
+          </div>
+          <p id="eventError" class="form-error hidden" role="alert"></p>
+          <p class="form-help">Čas můžeš zadat po minutách. Akce se zatím uloží pouze v tomto prohlížeči.</p>
+          <div class="modal-actions">
+            <button class="button" data-close="eventModal" type="button">Zrušit</button>
+            <button class="button primary" type="submit">Přidat trénink</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*
+      Adresu veřejného Apps Scriptu lze doplnit později.
+      Administrace zatím funguje pouze lokálně, bez přihlášení a bez zápisu na server.
+    */
+    const API_URL = "SEM_VLOŽ_URL_APPS_SCRIPTU_EXEC";
+    const START_MINUTES = 6 * 60;
+    const END_MINUTES = 23 * 60;
+    const TRAINING_START_MINUTES = 14 * 60;
+    const SLOT_MINUTES = 30;
+    const DRAG_STEP_MINUTES = 15;
+    const DAYS = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
+    const LONG_DAYS = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"];
+    const STORAGE_KEY = "fk-junior-calendar-local-v1";
+
+    const $ = selector => document.querySelector(selector);
+    const pad = value => String(value).padStart(2, "0");
+
+    let sourceTeams = [];
+    let sourceLocations = [];
+    let sourceEvents = [];
+    let settings = { teams: [], locations: [], duration: 90 };
+    let localEvents = [];
+    let remoteOverrides = {};
+    let currentWeek = startOfWeek(new Date());
+    let adminMode = false;
+    let loading = false;
+    let activeModal = null;
+    let lastFocusedElement = null;
+    let gesture = null;
+    let suppressClick = false;
+
+    function dateKey(date) {
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function addDays(date, count) {
+      const copy = new Date(date);
+      copy.setDate(copy.getDate() + count);
+      return copy;
+    }
+
+    function startOfWeek(date) {
+      const copy = new Date(date);
+      copy.setHours(0, 0, 0, 0);
+      copy.setDate(copy.getDate() - ((copy.getDay() + 6) % 7));
+      return copy;
+    }
+
+    function parseDateKey(value) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
+      if (!match) return null;
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      const date = new Date(year, month - 1, day, 12);
+      return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+    }
+
+    function minutes(value) {
+      const match = /^(\d{1,2}):(\d{2})$/.exec(String(value));
+      if (!match) return NaN;
+      const hours = Number(match[1]);
+      const mins = Number(match[2]);
+      return hours <= 23 && mins <= 59 ? hours * 60 + mins : NaN;
+    }
+
+    function formatTime(value) {
+      return `${pad(Math.floor(value / 60))}:${pad(value % 60)}`;
+    }
+
+    function formatDuration(value) {
+      const hours = Math.floor(value / 60);
+      const mins = value % 60;
+      if (!hours) return `${mins} min`;
+      return mins ? `${hours} h ${mins} min` : `${hours} h`;
+    }
+
+    function cleanLines(value) {
+      return [...new Set(String(value).split(/\r?\n/).map(item => item.trim()).filter(Boolean))];
+    }
+
+    function makeElement(tag, className, text) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+
+    function setStatus(message, isError = false, allowRetry = false) {
+      const status = $("#status");
+      status.replaceChildren();
+      status.classList.remove("hidden");
+      status.classList.toggle("error", isError);
+      const text = document.createElement("div");
+      text.textContent = message;
+      status.appendChild(text);
+      if (allowRetry) {
+        const retry = makeElement("button", "button", "Zkusit znovu");
+        retry.type = "button";
+        retry.addEventListener("click", loadData);
+        status.appendChild(retry);
+      }
+    }
+
+    function validEvent(item) {
+      if (!item || typeof item !== "object") return false;
+      const start = minutes(item.start);
+      const end = minutes(item.end);
+      return Boolean(
+        parseDateKey(item.date) &&
+        Number.isFinite(start) &&
+        Number.isFinite(end) &&
+        end > start &&
+        typeof item.location === "string"
+      );
+    }
+
+    function normalizeEvent(item, fallbackId, origin) {
+      if (!validEvent(item)) return null;
+      return {
+        id: String(item.id ?? fallbackId),
+        date: item.date,
+        start: formatTime(minutes(item.start)),
+        end: formatTime(minutes(item.end)),
+        teams: Array.isArray(item.teams)
+          ? item.teams.filter(team => typeof team === "string" && team.trim()).map(team => team.trim())
+          : [],
+        location: item.location.trim() || "Neuvedeno",
+        type: ["training", "match", "blocked"].includes(item.type) ? item.type : "training",
+        size: Number(item.size),
+        note: typeof item.note === "string" ? item.note : "",
+        origin
+      };
+    }
+
+    function readLocalData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (!data || typeof data !== "object") return;
+        if (data.settings && typeof data.settings === "object") {
+          settings.teams = Array.isArray(data.settings.teams)
+            ? [...new Set(data.settings.teams.filter(x => typeof x === "string").map(x => x.trim()).filter(Boolean))]
+            : [];
+          settings.locations = Array.isArray(data.settings.locations)
+            ? [...new Set(data.settings.locations.filter(x => typeof x === "string").map(x => x.trim()).filter(Boolean))]
+            : [];
+          const duration = Number(data.settings.duration);
+          if (Number.isInteger(duration) && duration >= 1 && duration <= 1020) settings.duration = duration;
+        }
+        if (Array.isArray(data.events)) {
+          localEvents = data.events.map((item, index) => normalizeEvent(item, `local-${index}`, "local")).filter(Boolean);
+        }
+        if (data.remoteOverrides && typeof data.remoteOverrides === "object" && !Array.isArray(data.remoteOverrides)) {
+          remoteOverrides = data.remoteOverrides;
+        }
+      } catch (_) {
+        setStatus("Místní data se nepodařilo načíst. Zkontroluj nastavení úložiště prohlížeče.", true);
+      }
+    }
+
+    function saveLocalData() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          settings,
+          events: localEvents,
+          remoteOverrides
+        }));
+        return true;
+      } catch (_) {
+        setStatus("Změnu se nepodařilo uložit do prohlížeče. Po obnovení stránky se může ztratit.", true);
+        return false;
+      }
+    }
+
+    function allTeams() {
+      return [...new Set([
+        ...sourceTeams,
+        ...settings.teams,
+        ...sourceEvents.flatMap(event => event.teams),
+        ...localEvents.flatMap(event => event.teams)
+      ])];
+    }
+
+    function allLocations() {
+      const names = [
+        ...sourceLocations.map(item => item.name),
+        ...settings.locations,
+        ...sourceEvents.map(event => event.location),
+        ...localEvents.map(event => event.location)
+      ].filter(Boolean);
+      return [...new Set(names)];
+    }
+
+    function remoteKey(event) {
+      return JSON.stringify([event.id, event.date]);
+    }
+
+    function allEvents() {
+      const remote = sourceEvents.map(event => {
+        const override = remoteOverrides[remoteKey(event)];
+        if (!override || !validEvent({ ...event, ...override })) return event;
+        return { ...event, date: override.date, start: override.start, end: override.end };
+      });
+      return [...remote, ...localEvents];
+    }
+
+    function typeLabel(type) {
+      if (type === "match") return "Zápas";
+      if (type === "blocked") return "Údržba / blokace";
+      return "Trénink";
+    }
+
+    function isExternal(name) {
+      return sourceLocations.some(item => item.name === name && item.type === "external");
+    }
+
+    function eventClass(event) {
+      if (event.type === "blocked") return "blocked";
+      if (isExternal(event.location)) return "external";
+      if (event.type === "match") return "match";
+      return "";
+    }
+
+    function populateSelect(select, defaultText, values, includeDefault = true) {
+      const previous = select.value;
+      select.replaceChildren();
+      if (includeDefault) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = defaultText;
+        select.appendChild(option);
+      }
+      values.forEach(value => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+      if (values.includes(previous)) select.value = previous;
+    }
+
+    function populateControls() {
+      const teams = allTeams();
+      const locations = allLocations();
+      populateSelect($("#teamFilter"), "Všechny týmy", teams);
+      populateSelect($("#locationFilter"), "Všechna sportoviště", locations);
+      populateSelect($("#newLocation"), "Neuvedeno", locations);
+      renderTeams();
+    }
+
+    function renderTeams() {
+      const container = $("#teamList");
+      container.replaceChildren();
+      const teams = allTeams();
+      if (!teams.length) {
+        container.appendChild(makeElement("p", "empty-teams", "Zatím tu nejsou žádné týmy. Přidej je v nastavení administrace."));
+        return;
+      }
+      teams.forEach(team => {
+        const button = makeElement("button", "team-chip", team);
+        button.type = "button";
+        button.title = "Přetáhni do kalendáře nebo klikni pro přidání přes formulář";
+        button.addEventListener("pointerdown", event => beginGesture(event, { kind: "new", team }));
+        button.addEventListener("click", () => {
+          if (suppressClick) return;
+          openNewEvent(team);
+        });
+        container.appendChild(button);
+      });
+    }
+
+    function weekEvents() {
+      const selectedTeam = $("#teamFilter").value;
+      const selectedLocation = $("#locationFilter").value;
+      const first = dateKey(currentWeek);
+      const last = dateKey(addDays(currentWeek, 6));
+      return allEvents().filter(event =>
+        event.date >= first &&
+        event.date <= last &&
+        (!selectedTeam || event.teams.includes(selectedTeam)) &&
+        (!selectedLocation || event.location === selectedLocation)
+      );
+    }
+
+    function renderSummary(events) {
+      const team = $("#teamFilter").value;
+      const location = $("#locationFilter").value;
+      const title = $("#summaryTitle");
+      const caption = $("#summaryCaption");
+      const list = $("#summaryList");
+      list.replaceChildren();
+
+      if (!team) {
+        title.textContent = "Přehled týmu";
+        caption.textContent = "";
+        list.appendChild(makeElement("p", "summary-empty", "Vyber svůj tým ve filtru a tady uvidíš přesné časy jeho akcí v tomto týdnu."));
+        return;
+      }
+
+      title.textContent = `Tento týden · ${team}`;
+      caption.textContent = location
+        ? `Sportoviště: ${location} · kliknutím otevřeš detail`
+        : "Kliknutím na kartu otevřeš detail akce";
+
+      const sorted = [...events].sort((a, b) =>
+        a.date.localeCompare(b.date) ||
+        minutes(a.start) - minutes(b.start) ||
+        minutes(a.end) - minutes(b.end) ||
+        a.location.localeCompare(b.location, "cs")
+      );
+
+      if (!sorted.length) {
+        list.appendChild(makeElement(
+          "p",
+          "summary-empty",
+          location
+            ? "Pro tento tým a sportoviště nejsou v daném týdnu žádné akce."
+            : "Pro tento tým nejsou v daném týdnu žádné akce."
+        ));
+        return;
+      }
+
+      sorted.forEach(event => {
+        const date = parseDateKey(event.date);
+        const weekday = (date.getDay() + 6) % 7;
+        const dayText = `${LONG_DAYS[weekday]} ${date.getDate()}. ${date.getMonth() + 1}.`;
+        const duration = formatDuration(minutes(event.end) - minutes(event.start));
+        const button = makeElement("button", `summary-pill ${eventClass(event)}`.trim());
+        button.type = "button";
+        button.appendChild(makeElement("span", "pill-day", dayText));
+        button.appendChild(makeElement("span", "pill-time", `${event.start}–${event.end}`));
+        button.appendChild(makeElement("span", "pill-meta", `${typeLabel(event.type)} · ${duration}`));
+        button.appendChild(makeElement("span", "pill-meta", event.location));
+        button.setAttribute("aria-label", `${dayText}, ${typeLabel(event.type)}, ${event.start} až ${event.end}, ${duration}, ${event.location}. Otevřít detail.`);
+        button.addEventListener("click", () => openEventDetails(event));
+        list.appendChild(button);
+      });
+    }
+
+    function assignLanes(dayEvents) {
+      const sorted = [...dayEvents].sort((a, b) =>
+        minutes(a.start) - minutes(b.start) ||
+        minutes(a.end) - minutes(b.end) ||
+        a.id.localeCompare(b.id)
+      );
+      const groups = [];
+      let group = [];
+      let groupEnd = -1;
+
+      sorted.forEach(event => {
+        const start = minutes(event.start);
+        const end = minutes(event.end);
+        if (group.length && start >= groupEnd) {
+          groups.push(group);
+          group = [];
+          groupEnd = -1;
+        }
+        group.push(event);
+        groupEnd = Math.max(groupEnd, end);
+      });
+      if (group.length) groups.push(group);
+
+      const result = [];
+      groups.forEach(items => {
+        const laneEnds = [];
+        const placements = [];
+        items.forEach(event => {
+          const start = minutes(event.start);
+          let lane = laneEnds.findIndex(end => end <= start);
+          if (lane === -1) lane = laneEnds.length;
+          laneEnds[lane] = minutes(event.end);
+          placements.push({ event, lane });
+        });
+        placements.forEach(placement => result.push({ ...placement, laneCount: laneEnds.length }));
+      });
+      return result;
+    }
+
+    function getSlotHeight() {
+      return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--slot-height")) || 42;
+    }
+
+    function showTrainingHours() {
+      $("#calendarScroll").scrollTop =
+        ((TRAINING_START_MINUTES - START_MINUTES) / SLOT_MINUTES) * getSlotHeight();
+    }
+
+    function renderCalendar() {
+      const scroll = $("#calendarScroll");
+      const previousTop = scroll.scrollTop;
+      const previousLeft = scroll.scrollLeft;
+      const slotHeight = getSlotHeight();
+      const endWeek = addDays(currentWeek, 6);
+      const firstFormatter = new Intl.DateTimeFormat("cs-CZ", { day: "numeric", month: "long" });
+      const lastFormatter = new Intl.DateTimeFormat("cs-CZ", { day: "numeric", month: "long", year: "numeric" });
+      $("#rangeLabel").textContent = `${firstFormatter.format(currentWeek)} – ${lastFormatter.format(endWeek)}`;
+
+      const calendar = $("#calendar");
+      const fragment = document.createDocumentFragment();
+      const corner = makeElement("div", "corner");
+      corner.style.gridColumn = "1";
+      corner.style.gridRow = "1";
+      fragment.appendChild(corner);
+
+      const weekDates = [];
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        const date = addDays(currentWeek, dayIndex);
+        weekDates.push(dateKey(date));
+        const header = makeElement("div", `day-header${dateKey(date) === dateKey(new Date()) ? " is-today" : ""}`);
+        header.style.gridColumn = String(dayIndex + 2);
+        header.style.gridRow = "1";
+        header.appendChild(document.createTextNode(DAYS[dayIndex]));
+        header.appendChild(makeElement("span", "", `${date.getDate()}.${date.getMonth() + 1}.`));
+        fragment.appendChild(header);
+      }
+
+      const rowCount = (END_MINUTES - START_MINUTES) / SLOT_MINUTES;
+      for (let row = 0; row < rowCount; row++) {
+        const current = START_MINUTES + row * SLOT_MINUTES;
+        const label = makeElement("div", "time-label", current % 60 === 0 ? formatTime(current) : "");
+        label.style.gridColumn = "1";
+        label.style.gridRow = String(row + 2);
+        fragment.appendChild(label);
+        for (let day = 0; day < 7; day++) {
+          const slot = makeElement("div", "slot");
+          slot.style.gridColumn = String(day + 2);
+          slot.style.gridRow = String(row + 2);
+          fragment.appendChild(slot);
+        }
+      }
+
+      const layer = makeElement("div", "event-layer");
+      layer.id = "eventLayer";
+      fragment.appendChild(layer);
+      calendar.replaceChildren(fragment);
+
+      const events = weekEvents();
+      renderSummary(events);
+      const visibleEvents = events.filter(event =>
+        minutes(event.start) < END_MINUTES &&
+        minutes(event.end) > START_MINUTES
+      );
+      $("#eventCount").textContent = `Zobrazeno akcí: ${visibleEvents.length}`;
+
+      weekDates.forEach((dayKey, dayIndex) => {
+        assignLanes(visibleEvents.filter(event => event.date === dayKey)).forEach(({ event, lane, laneCount }) => {
+          const start = minutes(event.start);
+          const end = minutes(event.end);
+          const visibleStart = Math.max(start, START_MINUTES);
+          const visibleEnd = Math.min(end, END_MINUTES);
+          const top = ((visibleStart - START_MINUTES) / SLOT_MINUTES) * slotHeight;
+          const height = ((visibleEnd - visibleStart) / SLOT_MINUTES) * slotHeight;
+
+          const button = makeElement("button", `event ${eventClass(event)} ${adminMode ? "movable" : ""}`.trim());
+          button.type = "button";
+          button.style.top = `${top + 1}px`;
+          button.style.height = `${Math.max(1, height - 2)}px`;
+          button.style.left = `${((dayIndex + lane / laneCount) / 7) * 100}%`;
+          button.style.width = `calc(${100 / (7 * laneCount)}% - 2px)`;
+
+          const name = event.teams.length ? event.teams.join(", ") : typeLabel(event.type);
+          button.appendChild(makeElement("span", "event-name", name));
+          button.appendChild(makeElement("span", "event-detail", `${event.location} · ${event.start}–${event.end}`));
+          const description = `${name}, ${event.location}, ${event.start} až ${event.end}`;
+          button.title = adminMode ? `${description}. Podržením lze přesunout.` : description;
+          button.setAttribute("aria-label", description);
+          button.addEventListener("click", () => {
+            if (!suppressClick) openEventDetails(event);
+          });
+          if (adminMode) {
+            button.addEventListener("pointerdown", pointerEvent =>
+              beginGesture(pointerEvent, { kind: "move", event })
+            );
+          }
+          layer.appendChild(button);
+        });
+      });
+
+      scroll.scrollTop = previousTop;
+      scroll.scrollLeft = previousLeft;
+    }
+
+    function dropTarget(clientX, clientY, duration) {
+      const layer = $("#eventLayer");
+      const viewport = $("#calendarScroll");
+      if (!layer || !viewport) return null;
+      const rect = layer.getBoundingClientRect();
+      const view = viewport.getBoundingClientRect();
+      const headerHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-height")) || 60;
+
+      if (
+        clientX < view.left || clientX >= view.right ||
+        clientY < view.top + headerHeight || clientY >= view.bottom ||
+        clientX < rect.left || clientX >= rect.right ||
+        clientY < rect.top || clientY >= rect.bottom
+      ) return null;
+
+      const day = Math.floor((clientX - rect.left) / (rect.width / 7));
+      const elapsedMinutes = ((clientY - rect.top) / getSlotHeight()) * SLOT_MINUTES;
+      const start = START_MINUTES + Math.floor(elapsedMinutes / DRAG_STEP_MINUTES) * DRAG_STEP_MINUTES;
+      if (day < 0 || day > 6 || start < START_MINUTES || start + duration > END_MINUTES) return null;
+      return { date: dateKey(addDays(currentWeek, day)), start, end: start + duration };
+    }
+
+    function beginGesture(pointerEvent, data) {
+      if (!adminMode || gesture || (pointerEvent.pointerType === "mouse" && pointerEvent.button !== 0)) return;
+      const target = pointerEvent.currentTarget;
+      const duration = data.kind === "new"
+        ? settings.duration
+        : minutes(data.event.end) - minutes(data.event.start);
+
+      gesture = {
+        pointerId: pointerEvent.pointerId,
+        target,
+        data,
+        duration,
+        startX: pointerEvent.clientX,
+        startY: pointerEvent.clientY,
+        x: pointerEvent.clientX,
+        y: pointerEvent.clientY,
+        dragging: false,
+        cancelled: false,
+        ghost: null,
+        timer: null
+      };
+
+      try { target.setPointerCapture(pointerEvent.pointerId); } catch (_) {}
+
+      if (data.kind === "move") {
+        gesture.timer = setTimeout(() => {
+          if (gesture && !gesture.cancelled) startDragging();
+        }, 550);
+      }
+
+      target.addEventListener("pointermove", onGestureMove);
+      target.addEventListener("pointerup", onGestureEnd);
+      target.addEventListener("pointercancel", onGestureCancel);
+      target.addEventListener("lostpointercapture", onLostCapture);
+    }
+
+    function startDragging() {
+      if (!gesture || gesture.dragging) return;
+      gesture.dragging = true;
+      gesture.ghost = makeElement("div", "drag-ghost");
+      gesture.ghost.setAttribute("aria-hidden", "true");
+      document.body.appendChild(gesture.ghost);
+      updateGhost();
+    }
+
+    function updateGhost() {
+      if (!gesture || !gesture.ghost) return;
+      const destination = dropTarget(gesture.x, gesture.y, gesture.duration);
+      const name = gesture.data.kind === "new"
+        ? gesture.data.team
+        : gesture.data.event.teams.join(", ") || typeLabel(gesture.data.event.type);
+      gesture.ghost.style.left = `${gesture.x}px`;
+      gesture.ghost.style.top = `${gesture.y}px`;
+      gesture.ghost.classList.toggle("invalid", !destination);
+      gesture.ghost.textContent = destination
+        ? `${name} · ${formatTime(destination.start)}–${formatTime(destination.end)}`
+        : `${name} · přesuň do kalendáře`;
+    }
+
+    function onGestureMove(event) {
+      if (!gesture || event.pointerId !== gesture.pointerId) return;
+      gesture.x = event.clientX;
+      gesture.y = event.clientY;
+      const distance = Math.hypot(gesture.x - gesture.startX, gesture.y - gesture.startY);
+
+      if (!gesture.dragging && gesture.data.kind === "new" && distance >= 6) startDragging();
+      if (!gesture.dragging && gesture.data.kind === "move" && distance >= 10) {
+        clearTimeout(gesture.timer);
+        gesture.cancelled = true;
+      }
+      if (gesture.dragging) {
+        event.preventDefault();
+        updateGhost();
+      }
+    }
+
+    function endGestureListeners(target) {
+      target.removeEventListener("pointermove", onGestureMove);
+      target.removeEventListener("pointerup", onGestureEnd);
+      target.removeEventListener("pointercancel", onGestureCancel);
+      target.removeEventListener("lostpointercapture", onLostCapture);
+    }
+
+    function clearGesture() {
+      if (!gesture) return;
+      clearTimeout(gesture.timer);
+      if (gesture.ghost) gesture.ghost.remove();
+      endGestureListeners(gesture.target);
+      gesture = null;
+    }
+
+    function onGestureEnd(event) {
+      if (!gesture || event.pointerId !== gesture.pointerId) return;
+      const current = gesture;
+      const destination = current.dragging
+        ? dropTarget(event.clientX, event.clientY, current.duration)
+        : null;
+      const wasDragging = current.dragging;
+      clearGesture();
+
+      if (!wasDragging) return;
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 0);
+
+      if (!destination) {
+        setStatus("Akce nebyla přesunuta. Pusť ji na platný čas v kalendáři.", true);
+        return;
+      }
+
+      if (current.data.kind === "new") {
+        openNewEvent(current.data.team, destination);
+      } else {
+        moveEvent(current.data.event, destination);
+      }
+    }
+
+    function onGestureCancel() {
+      if (gesture && gesture.dragging) {
+        suppressClick = true;
+        setTimeout(() => { suppressClick = false; }, 0);
+      }
+      clearGesture();
+    }
+
+    function onLostCapture() {
+      if (gesture) clearGesture();
+    }
+
+    function moveEvent(event, destination) {
+      const updated = {
+        date: destination.date,
+        start: formatTime(destination.start),
+        end: formatTime(destination.end)
+      };
+
+      if (event.origin === "local") {
+        localEvents = localEvents.map(item => item.id === event.id ? { ...item, ...updated } : item);
+      } else {
+        const source = sourceEvents.find(item => item.id === event.id);
+        if (!source) {
+          setStatus("Původní akci se nepodařilo najít.", true);
+          return;
+        }
+        remoteOverrides[remoteKey(source)] = updated;
+      }
+
+      const saved = saveLocalData();
+      populateControls();
+      renderCalendar();
+      if (saved) setStatus("Akce byla přesunuta v tomto prohlížeči. Změna se zatím nesdílí.");
+    }
+
+    function appendDetail(list, label, value) {
+      const row = document.createElement("div");
+      const term = document.createElement("dt");
+      const description = document.createElement("dd");
+      term.textContent = label;
+      description.textContent = value;
+      row.append(term, description);
+      list.appendChild(row);
+    }
+
+    function openEventDetails(event) {
+      const list = $("#detailList");
+      const actions = $("#detailActions");
+      list.replaceChildren();
+      actions.replaceChildren();
+
+      const date = parseDateKey(event.date);
+      const formattedDate = date
+        ? new Intl.DateTimeFormat("cs-CZ", {
+            weekday: "long", day: "numeric", month: "long", year: "numeric"
+          }).format(date)
+        : event.date;
+
+      appendDetail(list, "Typ akce", typeLabel(event.type));
+      appendDetail(list, "Tým", event.teams.length ? event.teams.join(", ") : "Neuveden");
+      appendDetail(list, "Datum", formattedDate);
+      appendDetail(list, "Čas", `${event.start}–${event.end}`);
+      appendDetail(list, "Délka", formatDuration(minutes(event.end) - minutes(event.start)));
+      appendDetail(list, "Sportoviště", event.location);
+
+      if ([1, 0.5, 0.25].includes(event.size)) {
+        const labels = { 1: "Celé hřiště", 0.5: "Polovina hřiště", 0.25: "Čtvrtina hřiště" };
+        appendDetail(list, "Rozsah hřiště", labels[event.size]);
+      }
+      if (event.note) appendDetail(list, "Poznámka", event.note);
+
+      if (adminMode && event.origin === "local") {
+        const remove = makeElement("button", "button danger", "Smazat místní akci");
+        remove.type = "button";
+        remove.addEventListener("click", () => {
+          if (!window.confirm("Opravdu chceš smazat tuto místní akci?")) return;
+          localEvents = localEvents.filter(item => item.id !== event.id);
+          const saved = saveLocalData();
+          closeModal("detailModal");
+          populateControls();
+          renderCalendar();
+          if (saved) setStatus("Místní akce byla smazána.");
+        });
+        actions.appendChild(remove);
+      }
+      openModal("detailModal");
+    }
+
+    function openModal(id) {
+      if (activeModal) closeModal(activeModal, false);
+      const modal = document.getElementById(id);
+      lastFocusedElement = document.activeElement;
+      activeModal = id;
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      modal.querySelector(".close").focus();
+    }
+
+    function closeModal(id, restoreFocus = true) {
+      const modal = document.getElementById(id);
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      if (activeModal === id) activeModal = null;
+      if (restoreFocus && lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+        lastFocusedElement.focus();
+      }
+      lastFocusedElement = null;
+    }
+
+    function openSettings() {
+      $("#settingsTeams").value = settings.teams.join("\n");
+      $("#settingsLocations").value = settings.locations.join("\n");
+      $("#settingsDuration").value = String(settings.duration);
+      $("#settingsError").classList.add("hidden");
+      openModal("settingsModal");
+    }
+
+    function openNewEvent(team, destination = null) {
+      if (!adminMode) return;
+      const teamValues = allTeams();
+      const locationValues = allLocations();
+      populateSelect($("#eventTeam"), "", teamValues, false);
+      $("#eventTeam").value = team;
+
+      const eventLocations = locationValues.includes("Neuvedeno")
+        ? locationValues
+        : ["Neuvedeno", ...locationValues];
+      populateSelect($("#eventLocation"), "", eventLocations, false);
+      $("#eventLocation").value = $("#newLocation").value || "Neuvedeno";
+
+      const today = dateKey(new Date());
+      const first = dateKey(currentWeek);
+      const last = dateKey(addDays(currentWeek, 6));
+      $("#eventDate").value = destination
+        ? destination.date
+        : (today >= first && today <= last ? today : first);
+      const start = destination ? destination.start : TRAINING_START_MINUTES;
+      $("#eventStart").value = formatTime(start);
+      $("#eventEnd").value = start + settings.duration < 24 * 60
+        ? formatTime(start + settings.duration)
+        : "";
+      $("#eventNote").value = "";
+      $("#eventError").classList.add("hidden");
+      openModal("eventModal");
+    }
+
+    function showFormError(element, message) {
+      element.textContent = message;
+      element.classList.remove("hidden");
+    }
+
+    function loadPublicData() {
+      return new Promise((resolve, reject) => {
+        let url;
+        try { url = new URL(API_URL); }
+        catch (_) {
+          reject(new Error("Adresa API není platná."));
+          return;
+        }
+        if (url.protocol !== "https:" || !url.pathname.endsWith("/exec")) {
+          reject(new Error("Adresa API musí používat HTTPS a končit /exec."));
+          return;
+        }
+
+        const callbackName = `fkCalendar_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+        const script = document.createElement("script");
+        url.searchParams.set("action", "initialData");
+        url.searchParams.set("callback", callbackName);
+        url.searchParams.set("payload", btoa("{}"));
+        url.searchParams.set("_", String(Date.now()));
+
+        let finished = false;
+        const timeout = setTimeout(() => fail(new Error("Server neodpověděl.")), 20000);
+
+        function cleanup() {
+          clearTimeout(timeout);
+          delete window[callbackName];
+          script.remove();
+        }
+
+        function fail(error) {
+          if (finished) return;
+          finished = true;
+          cleanup();
+          reject(error);
+        }
+
+        window[callbackName] = response => {
+          if (finished) return;
+          finished = true;
+          cleanup();
+          if (response && response.ok && response.data && typeof response.data === "object") {
+            resolve(response.data);
+          } else {
+            reject(new Error(response && typeof response.error === "string"
+              ? response.error
+              : "Server vrátil neplatnou odpověď."));
+          }
+        };
+        script.onerror = () => fail(new Error("Nepodařilo se připojit k Apps Scriptu."));
+        script.src = url.href;
+        document.head.appendChild(script);
+      });
+    }
+
+    async function loadData() {
+      if (API_URL.includes("SEM_VLOŽ")) {
+        setStatus("Apps Script zatím není připojený. Rozpis si můžeš vyzkoušet v místní administraci.");
+        return;
+      }
+      if (loading) return;
+      loading = true;
+      setStatus("Načítám rozpis…");
+
+      try {
+        const data = await loadPublicData();
+        sourceTeams = Array.isArray(data.teams)
+          ? [...new Set(data.teams.filter x => typeof x === "string")]
+          : [];
+        sourceLocations = Array.isArray(data.locations)
+          ? data.locations
+              .filter(item => item && typeof item.name === "string" && item.name.trim())
+              .map(item => ({ name: item.name.trim(), type: item.type === "external" ? "external" : "internal" }))
+          : [];
+        const rawEvents = Array.isArray(data.events) ? data.events : [];
+        sourceEvents = rawEvents.map((item, index) => normalizeEvent(item, `row-${index}`, "remote")).filter(Boolean);
+        populateControls();
+        renderCalendar();
+        const skipped = rawEvents.length - sourceEvents.length;
+        if (skipped) setStatus(`Rozpis byl načten, ale ${skipped} záznamů má neplatné údaje.`);
+        else $("#status").classList.add("hidden");
+      } catch (error) {
+        setStatus(`Rozpis se nepodařilo načíst: ${error.message}`, true, true);
+      } finally {
+        loading = false;
+      }
+    }
+
+    $("#adminButton").addEventListener("click", () => {
+      adminMode = !adminMode;
+      $("#adminPanel").classList.toggle("hidden", !adminMode);
+      $("#viewLabel").textContent = adminMode ? "● Zkušební administrace" : "● Náhled trenéra";
+      $("#viewLabel").classList.toggle("admin", adminMode);
+      $("#adminButton").textContent = adminMode ? "UKONČIT ADMINISTRACI" : "ZKUŠEBNÍ ADMINISTRACE";
+      renderCalendar();
+    });
+
+    $("#settingsButton").addEventListener("click", openSettings);
+
+    $("#settingsForm").addEventListener("submit", event => {
+      event.preventDefault();
+      const duration = Number($("#settingsDuration").value);
+      if (!Number.isInteger(duration) || duration < 1 || duration > 1020) {
+        showFormError($("#settingsError"), "Zadej délku od 1 do 1020 minut.");
+        return;
+      }
+      settings = {
+        teams: cleanLines($("#settingsTeams").value),
+        locations: cleanLines($("#settingsLocations").value),
+        duration
+      };
+      const saved = saveLocalData();
+      closeModal("settingsModal");
+      populateControls();
+      renderCalendar();
+      if (saved) setStatus("Nastavení bylo uloženo v tomto prohlížeči.");
+    });
+
+    $("#eventStart").addEventListener("change", () => {
+      const start = minutes($("#eventStart").value);
+      if (Number.isFinite(start) && start + settings.duration < 24 * 60) {
+        $("#eventEnd").value = formatTime(start + settings.duration);
+      } else {
+        $("#eventEnd").value = "";
+      }
+    });
+
+    $("#eventForm").addEventListener("submit", event => {
+      event.preventDefault();
+      const team = $("#eventTeam").value;
+      const date = $("#eventDate").value;
+      const start = minutes($("#eventStart").value);
+      const end = minutes($("#eventEnd").value);
+      const location = $("#eventLocation").value || "Neuvedeno";
+
+      if (!team || !parseDateKey(date) || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        showFormError($("#eventError"), "Vyplň tým, platné datum a čas. Konec musí být po začátku ve stejný den.");
+        return;
+      }
+      if (start < START_MINUTES || end > END_MINUTES) {
+        showFormError($("#eventError"), "Akce musí být v rozsahu kalendáře 06:00–23:00.");
+        return;
+      }
+
+      const id = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+      localEvents.push({
+        id,
+        date,
+        start: formatTime(start),
+        end: formatTime(end),
+        teams: [team],
+        location,
+        type: "training",
+        note: $("#eventNote").value.trim(),
+        origin: "local"
+      });
+
+      const saved = saveLocalData();
+      currentWeek = startOfWeek(parseDateKey(date));
+      closeModal("eventModal");
+      populateControls();
+      renderCalendar();
+
+      const teamFilter = $("#teamFilter").value;
+      const locationFilter = $("#locationFilter").value;
+      const hiddenByFilter = (teamFilter && teamFilter !== team) || (locationFilter && locationFilter !== location);
+      if (saved) {
+        setStatus(hiddenByFilter
+          ? "Akce byla místně přidána, ale aktuální filtr ji skrývá."
+          : "Akce byla přidána v tomto prohlížeči. Změna se zatím nesdílí.");
+      }
+    });
+
+    $("#previousWeek").addEventListener("click", () => {
+      currentWeek = addDays(currentWeek, -7);
+      renderCalendar();
+    });
+
+    $("#nextWeek").addEventListener("click", () => {
+      currentWeek = addDays(currentWeek, 7);
+      renderCalendar();
+    });
+
+    $("#todayButton").addEventListener("click", () => {
+      currentWeek = startOfWeek(new Date());
+      renderCalendar();
+    });
+
+    $("#trainingHours").addEventListener("click", showTrainingHours);
+    $("#teamFilter").addEventListener("change", renderCalendar);
+    $("#locationFilter").addEventListener("change", renderCalendar);
+    $("#clearFilters").addEventListener("click", () => {
+      $("#teamFilter").value = "";
+      $("#locationFilter").value = "";
+      renderCalendar();
+    });
+
+    document.querySelectorAll("[data-close]").forEach(button => {
+      button.addEventListener("click", () => closeModal(button.dataset.close));
+    });
+
+    document.querySelectorAll(".backdrop").forEach(backdrop => {
+      backdrop.addEventListener("click", event => {
+        if (event.target === backdrop) closeModal(backdrop.id);
+      });
+    });
+
+    document.addEventListener("keydown", event => {
+      if (!activeModal) return;
+      const modal = document.getElementById(activeModal);
+      if (event.key === "Escape") {
+        closeModal(activeModal);
+        return;
+      }
+      if (event.key === "Tab") {
+        const controls = Array.from(modal.querySelectorAll("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])"));
+        if (!controls.length) return;
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    });
+
+    readLocalData();
+    populateControls();
+    renderCalendar();
+    showTrainingHours();
+    loadData();
+  </script>
+</body>
+</html>
