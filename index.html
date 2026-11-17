@@ -117,7 +117,7 @@ textarea { resize:vertical; }
 #toggleCalendar,.summary-day-heading { display:none; }
 .summary-day,.summary-day-events { display:contents; }
 @media(min-width:761px) {
-  .week-summary { display:none; }
+  .week-summary:not(.has-team) { display:none; }
 }
 @media(max-width:760px) {
   #toggleCalendar { display:inline-flex; align-items:center; min-height:44px; }
@@ -184,6 +184,8 @@ textarea { resize:vertical; }
 .venue-label { display:block; width:fit-content; max-width:100%; padding:1px 3px; border-radius:3px; background:#edf0f4; color:#37465a; line-height:1.15; overflow-wrap:anywhere; }
 .event.short-event { display:flex; flex-wrap:wrap; align-content:start; gap:0 3px; }
 .event.short-event .event-time { order:-1; }
+.event-venue { display:block; font-size:9px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.event.short-event .event-venue { display:none; }
 @media(max-width:760px) {
   :root { --time-column:31px; }
   .time-label { padding-right:3px; font-size:9px; }
@@ -519,7 +521,7 @@ function renderTeams() {
   });
 }
 function weekEvents() {
-  const selectedTeam = $("#teamFilter").value, selectedLocation = $("#locationFilter").value;
+  const selectedTeam = $("#teamFilter").value;
   const first = dateKey(currentWeek), last = dateKey(addDays(currentWeek, 6));
   return sourceEvents.flatMap(event => {
     if (!event.repeat) return [event];
@@ -534,16 +536,16 @@ function weekEvents() {
       .map(([occurrence, value]) => ({ ...event, ...value, occurrence, series:event }));
     return regular.concat(moved);
   }).filter(event => event.date >= first && event.date <= last &&
-    (!selectedTeam || event.teams.includes(selectedTeam)) &&
-    event.location === selectedLocation);
+    (!selectedTeam || event.teams.includes(selectedTeam)));
 }
 
 function renderSummary(events) {
   const team = $("#teamFilter").value, location = $("#locationFilter").value;
   const title = $("#summaryTitle"), caption = $("#summaryCaption"), list = $("#summaryList");
   list.replaceChildren();
+  title.closest(".week-summary").classList.toggle("has-team", Boolean(team));
   title.textContent = team ? `Rozpis týmu · ${team}` : "Akce v tomto týdnu";
-  caption.textContent = location ? `Sportoviště: ${location}` : "";
+  caption.textContent = team ? "Všechna sportoviště" : location;
   const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date) ||
     minutes(a.start) - minutes(b.start) || minutes(a.end) - minutes(b.end) ||
     a.location.localeCompare(b.location, "cs"));
@@ -657,8 +659,9 @@ function renderCalendar() {
   fragment.appendChild(layer);
   calendar.replaceChildren(fragment);
 
-  const events = weekEvents();
-  renderSummary(events);
+  const allEvents = weekEvents();
+  const events = allEvents.filter(event => event.location === $("#locationFilter").value);
+  renderSummary($("#teamFilter").value ? allEvents : events);
   const visibleEvents = events.filter(event => minutes(event.start) < END_MINUTES && minutes(event.end) > START_MINUTES);
   const placements = weekDates.map(dayKey => assignLanes(visibleEvents.filter(event => event.date === dayKey)));
   placements.forEach((day, dayIndex) => {
@@ -678,7 +681,8 @@ function renderCalendar() {
       const time = makeElement("span", "event-time");
       time.append(document.createTextNode(`${event.start}–`), document.createElement("wbr"), document.createTextNode(event.end));
       button.classList.toggle("short-event", visibleEnd - visibleStart <= 15);
-      button.append(makeElement("span", "event-name", name), time);
+      button.append(makeElement("span", "event-name", name), time,
+        makeElement("span", "event-venue", event.location));
       const description = `${name}, ${event.location}, ${event.start} až ${event.end}`;
       button.title = adminMode ? `${description}. Přetažením lze přesunout.` : description;
       button.setAttribute("aria-label", description);
