@@ -174,6 +174,17 @@ textarea { resize:vertical; }
 @media(max-width:760px) {
   .header-actions .button,#addEvent { min-height:44px; }
 }
+.color-controls { display:flex; align-items:center; gap:10px; }
+#settingsColor { width:52px; height:40px; padding:4px; }
+.team-chip.team-colored,.summary-pill.team-colored { border-left:4px solid var(--team-color); }
+.event.team-colored { background:#f8fafc; background:color-mix(in srgb,var(--team-color) 13%,white); color:var(--ink); border-color:#dbe2ec; border-left-color:var(--team-color); }
+.event { padding:2px 3px; }
+.event-time { display:block; font-size:10px; line-height:1.15; font-weight:800; font-variant-numeric:tabular-nums; }
+.venue-label { display:block; width:fit-content; max-width:100%; padding:1px 3px; border-radius:3px; background:#edf0f4; color:#37465a; line-height:1.15; overflow-wrap:anywhere; }
+.event .venue-label { margin-top:2px; font-size:9px; }
+.event.short-event { display:flex; flex-wrap:wrap; align-content:start; gap:0 3px; }
+.event.short-event .venue-label { display:none; }
+.event.short-event .event-time { order:-1; }
 </style>
 </head>
 <body>
@@ -209,7 +220,7 @@ textarea { resize:vertical; }
       <div id="rangeLabel" class="range-label" aria-live="polite"></div>
       <button id="toggleCalendar" class="button" type="button" aria-expanded="false" aria-controls="calendarGridPanel">Zobrazit kalendář</button>
       <div class="legend" aria-label="Legenda">
-        <span><i></i>Trénink</span><span><i class="match-dot"></i>Zápas</span>
+        <span>Barva podle týmu</span><span><i class="match-dot"></i>Zápas bez barvy týmu</span>
         <span><i class="external-dot"></i>Externí pronájem</span><span><i class="blocked-dot"></i>Blokace</span>
       </div>
     </div>
@@ -259,7 +270,8 @@ textarea { resize:vertical; }
         <div class="field"><label for="settingsTeam">Tým</label><select id="settingsTeam" required></select></div>
         <div class="field"><label for="settingsDuration">Délka tréninku</label><select id="settingsDuration" required></select></div>
         <div class="field"><label for="settingsSize">Část hřiště</label><select id="settingsSize" required><option value="0.25">Čtvrtina hřiště</option><option value="0.5">Polovina hřiště</option><option value="1">Celé hřiště</option></select></div>
-        <p class="form-help">Nastavení platí pro nově přidané tréninky. Uložené termíny se nemění.</p>
+        <div id="settingsColorField" class="field hidden"><label for="settingsColor">Barva týmu</label><div class="color-controls"><input id="settingsColor" type="color"><button id="resetTeamColor" class="button" type="button">Výchozí barva</button></div></div>
+        <p class="form-help">Barva se projeví i u uložených akcí. Délka a část hřiště platí pro nové tréninky.</p>
         <p id="settingsError" class="form-error hidden" role="alert"></p>
         <div class="modal-actions"><button class="button" data-close="teamSettingsModal" type="button">Zavřít</button><button id="saveTeamDefaults" class="button primary" type="submit">Uložit nastavení</button></div>
       </form>
@@ -315,6 +327,9 @@ let sourceTeams = [];
 let repeatAvailable = false;
 let teamAdminAvailable = false;
 let teamDefaults = new Map();
+let teamColorsAvailable = false;
+let selectedTeamColor = "";
+const TEAM_COLORS = ["#4775a6","#227c76","#925591","#a15c34","#557633","#a94d67","#5963a2","#8b7133","#507d97","#76563d"];
 let requestedTeam = new URLSearchParams(location.search).get("tym");
 let sourceLocations = [];
 let sourceEvents = [];
@@ -418,6 +433,16 @@ function typeLabel(type) {
 function isExternal(name) {
   return sourceLocations.some(item => item.name === name && item.type === "external");
 }
+function defaultTeamColor(team) {
+  const index = sourceTeams.indexOf(team);
+  return TEAM_COLORS[Math.max(0, index) % TEAM_COLORS.length];
+}
+function paintTeam(element, team) {
+  if (!team) return;
+  const color = teamDefaults.get(team)?.color;
+  element.style.setProperty("--team-color", /^#[0-9a-f]{6}$/i.test(color || "") ? color : defaultTeamColor(team));
+  element.classList.add("team-colored");
+}
 function eventClass(event) {
   if (event.type === "blocked") return "blocked";
   if (event.type === "rental" || isExternal(event.location)) return "external";
@@ -476,6 +501,7 @@ function renderTeams() {
     const button = makeElement("button", "team-chip", team);
     button.type = "button";
     button.disabled = !connected || saving;
+    paintTeam(button, team);
     button.title = "Přetáhni do kalendáře nebo klikni pro přidání";
     button.addEventListener("pointerdown", event => beginGesture(event, { kind:"new", team }));
     button.addEventListener("click", () => { if (!suppressClick) openNewEvent(team); });
@@ -533,10 +559,11 @@ function renderSummary(events) {
     }
     const button = makeElement("button", `summary-pill ${eventClass(event)}`.trim());
     button.type = "button";
+    paintTeam(button, event.teams[0]);
     button.appendChild(makeElement("span", "pill-day", dayText));
     button.appendChild(makeElement("strong", "pill-title", event.teams.join(", ") || typeLabel(event.type)));
     button.appendChild(makeElement("span", "pill-time", `${event.start}–${event.end}`));
-    button.appendChild(makeElement("span", "pill-meta", event.location));
+    button.appendChild(makeElement("span", "pill-meta venue-label", event.location));
     button.appendChild(makeElement("span", "pill-meta", typeLabel(event.type)));
     button.setAttribute("aria-label", `${dayText}, ${event.start} až ${event.end}, ${event.location}, ${typeLabel(event.type)} ${event.teams.join(", ")}`.trim());
     button.addEventListener("click", () => openEventDetails(event));
@@ -623,8 +650,11 @@ function renderCalendar() {
   const events = weekEvents();
   renderSummary(events);
   const visibleEvents = events.filter(event => minutes(event.start) < END_MINUTES && minutes(event.end) > START_MINUTES);
-  weekDates.forEach((dayKey, dayIndex) => {
-    assignLanes(visibleEvents.filter(event => event.date === dayKey)).forEach(({ event, lane, laneCount }) => {
+  const placements = weekDates.map(dayKey => assignLanes(visibleEvents.filter(event => event.date === dayKey)));
+  const maxLanes = placements.reduce((max, day) => day.reduce((count, item) => Math.max(count, item.laneCount), max), 1);
+  calendar.style.minWidth = `${Math.max(1040, 60 + 7 * maxLanes * 46)}px`;
+  placements.forEach((day, dayIndex) => {
+    day.forEach(({ event, lane, laneCount }) => {
       const start = minutes(event.start), end = minutes(event.end);
       const visibleStart = Math.max(start, START_MINUTES), visibleEnd = Math.min(end, END_MINUTES);
       const top = ((visibleStart - START_MINUTES) / SLOT_MINUTES) * slotHeight;
@@ -636,8 +666,12 @@ function renderCalendar() {
       button.style.left = `${((dayIndex + lane / laneCount) / 7) * 100}%`;
       button.style.width = `calc(${100 / (7 * laneCount)}% - 2px)`;
       const name = event.teams.length ? event.teams.join(", ") : typeLabel(event.type);
-      button.appendChild(makeElement("span", "event-name", name));
-      button.appendChild(makeElement("span", "event-detail", `${event.location} · ${event.start}–${event.end}`));
+      paintTeam(button, event.teams[0]);
+      const time = makeElement("span", "event-time");
+      time.append(document.createTextNode(`${event.start}–`), document.createElement("wbr"), document.createTextNode(event.end));
+      button.classList.toggle("short-event", visibleEnd - visibleStart <= 15);
+      button.append(makeElement("span", "event-name", name), time,
+        makeElement("span", "venue-label", event.location));
       const description = `${name}, ${event.location}, ${event.start} až ${event.end}`;
       button.title = adminMode ? `${description}. Přetažením lze přesunout.` : description;
       button.setAttribute("aria-label", description);
@@ -941,6 +975,8 @@ async function loadData(silent = false) {
     if (events.some(event => !event)) throw new Error("Některé akce mají neplatné údaje. Zkontroluj list Akce v tabulce.");
     repeatAvailable = data.weeklyRepeat === true;
     teamAdminAvailable = data.teamAdmin === true;
+    teamColorsAvailable = data.teamColors === true;
+    $("#settingsColorField").classList.toggle("hidden", !teamColorsAvailable);
     $("#editTeamDefaults").classList.toggle("hidden", !adminMode || !teamAdminAvailable);
     $("#rentalOption").hidden = data.externalRental !== true;
     $("#rentalOption").disabled = data.externalRental !== true;
@@ -1143,6 +1179,8 @@ function showTeamSettings() {
   const { duration, size } = trainingDefaults([team]);
   $("#settingsDuration").value = String(duration);
   $("#settingsSize").value = String(size);
+  selectedTeamColor = teamDefaults.get(team)?.color || "";
+  $("#settingsColor").value = selectedTeamColor || defaultTeamColor(team);
   $("#settingsError").classList.add("hidden");
 }
 $("#editTeamDefaults").addEventListener("click", () => {
@@ -1157,6 +1195,11 @@ for (let duration = 15; duration <= 1020; duration += 15) {
   $("#settingsDuration").appendChild(option);
 }
 $("#settingsTeam").addEventListener("change", showTeamSettings);
+$("#settingsColor").addEventListener("change", event => { selectedTeamColor = event.target.value; });
+$("#resetTeamColor").addEventListener("click", () => {
+  selectedTeamColor = "";
+  $("#settingsColor").value = defaultTeamColor($("#settingsTeam").value);
+});
 $("#teamSettingsForm").addEventListener("submit", async event => {
   event.preventDefault();
   if (!adminMode || !teamAdminAvailable || !beginSaving()) return;
@@ -1165,8 +1208,11 @@ $("#teamSettingsForm").addEventListener("submit", async event => {
   const size = Number($("#settingsSize").value);
   $("#settingsError").classList.add("hidden");
   try {
-    await postAction("saveTeamDefaults", { team, duration, size });
-    teamDefaults.set(team, { team, duration, size });
+    const settings = { team, duration, size };
+    if (teamColorsAvailable) settings.color = selectedTeamColor;
+    const saved = await postAction("saveTeamDefaults", settings);
+    teamDefaults.set(team, saved);
+    renderCalendar();
     closeModal("teamSettingsModal");
     setStatus(`Nastavení týmu ${team} bylo uloženo do Google tabulky.`);
   } catch (error) {
