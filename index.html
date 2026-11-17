@@ -80,14 +80,14 @@ textarea { resize:vertical; }
 .pill-meta { max-width:260px; color:#5d6c82; font-size:11px; line-height:1.35; overflow-wrap:anywhere; }
 .summary-empty { margin:0; color:#64738a; font-size:12px; line-height:1.5; }
 .calendar-scroll { overflow-y:auto; overflow-x:hidden; max-width:100%; height:calc(var(--header-height) + 12 * var(--slot-height)); overscroll-behavior:contain; }
-.calendar { display:grid; grid-template-columns:var(--time-column) repeat(7,minmax(0,1fr)); grid-template-rows:var(--header-height) repeat(34,var(--slot-height)); width:100%; }
+.calendar { display:grid; grid-template-columns:var(--time-column) repeat(var(--calendar-columns,7),minmax(0,1fr)); grid-template-rows:var(--header-height) repeat(34,var(--slot-height)); width:100%; }
 .corner,.day-header { position:sticky; top:0; z-index:3; border-bottom:1px solid var(--line); background:#fbfcff; }
 .day-header { display:flex; flex-direction:column; align-items:center; justify-content:center; border-left:1px solid var(--line); color:var(--blue); font-size:12px; font-weight:900; text-transform:uppercase; }
 .day-header span { display:grid; place-items:center; min-width:34px; height:26px; margin-top:3px; padding:0 4px; color:#738198; font-size:11px; }
 .day-header.is-today span { border-radius:14px; background:var(--blue); color:#fff; }
 .time-label { padding:8px 8px 0 0; border-bottom:1px solid var(--line); background:#fbfcff; color:#65738a; font-size:11px; font-weight:800; text-align:right; }
 .slot { border-bottom:1px solid var(--line); border-left:1px solid var(--line); background:#fff; }
-.event-layer { position:relative; grid-column:2 / 9; grid-row:2 / 36; z-index:1; pointer-events:none; }
+.event-layer { position:relative; grid-column:2 / -1; grid-row:2 / 36; z-index:1; pointer-events:none; }
 .event { position:absolute; overflow:hidden; padding:4px 5px; border:1px solid #b8cff8; border-left:4px solid #3970cd; border-radius:5px; background:#dceaff; color:#174794; box-shadow:0 1px 2px rgba(32,67,132,.08); font-size:10px; font-weight:800; line-height:1.2; pointer-events:auto; text-align:left; }
 .event.movable { cursor:grab; touch-action:none; user-select:none; }
 .event.match { border-color:#efd170; border-left-color:#d99e00; background:#fff0bd; color:#795700; }
@@ -193,6 +193,10 @@ textarea { resize:vertical; }
   .day-header span { min-width:0; padding-inline:2px; }
   .event-time { font-size:8px; }
 }
+.calendar-switch { display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
+.calendar-switch .button[aria-pressed="true"] { background:var(--blue); color:#fff; border-color:var(--blue); }
+.venue-header { overflow-wrap:anywhere; padding:2px; text-align:center; text-transform:none; }
+#calendarDayPicker { width:auto; }
 </style>
 </head>
 <body>
@@ -226,6 +230,11 @@ textarea { resize:vertical; }
         <button id="nextWeek" class="button nav-button" type="button" aria-label="Další týden">›</button>
       </div>
       <div id="rangeLabel" class="range-label" aria-live="polite"></div>
+      <div id="calendarSwitch" class="calendar-switch hidden" role="group" aria-label="Zobrazení kalendáře">
+        <button id="weekView" class="button" type="button" aria-pressed="true">Týden</button>
+        <button id="dayView" class="button" type="button" aria-pressed="false">Den</button>
+        <input id="calendarDayPicker" class="hidden" type="date" aria-label="Vybrat den kalendáře">
+      </div>
       <button id="toggleCalendar" class="button" type="button" aria-expanded="false" aria-controls="calendarGridPanel">Zobrazit kalendář</button>
       <div class="legend" aria-label="Legenda">
         <span>Barva podle týmu</span><span><i class="match-dot"></i>Zápas bez barvy týmu</span>
@@ -342,6 +351,8 @@ let requestedTeam = new URLSearchParams(location.search).get("tym");
 let sourceLocations = [];
 let sourceEvents = [];
 let currentWeek = startOfWeek(new Date());
+let currentDay = null;
+let locationsInitialized = false;
 let adminPassword = "";
 let loginPending = false;
 let adminMode = false;
@@ -498,8 +509,11 @@ function populateControls() {
   const locationFilter = $("#locationFilter");
   const previousLocation = locationFilter.value;
   const venues = sourceLocations.map(item => item.name);
-  populateSelect(locationFilter, "", venues, false);
-  if (!venues.includes(previousLocation) && venues.includes("Umělka")) locationFilter.value = "Umělka";
+  populateSelect(locationFilter, "Všechna sportoviště", venues);
+  if ((!locationsInitialized || (previousLocation && !venues.includes(previousLocation))) && venues.includes("Umělka")) {
+    locationFilter.value = "Umělka";
+  }
+  if (venues.length) locationsInitialized = true;
   renderTeams();
 }
 function renderTeams() {
@@ -544,13 +558,13 @@ function renderSummary(events) {
   const title = $("#summaryTitle"), caption = $("#summaryCaption"), list = $("#summaryList");
   list.replaceChildren();
   title.closest(".week-summary").classList.toggle("has-team", Boolean(team));
-  title.textContent = team ? `Rozpis týmu · ${team}` : "Akce v tomto týdnu";
-  caption.textContent = team ? "Všechna sportoviště" : location;
+  title.textContent = team ? `Rozpis týmu · ${team}` : currentDay ? "Akce v tomto dni" : "Akce v tomto týdnu";
+  caption.textContent = currentDay || team ? "Všechna sportoviště" : location;
   const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date) ||
     minutes(a.start) - minutes(b.start) || minutes(a.end) - minutes(b.end) ||
     a.location.localeCompare(b.location, "cs"));
   if (!sorted.length) {
-    list.appendChild(makeElement("p", "summary-empty", "V tomto týdnu nejsou pro aktuální výběr žádné akce."));
+    list.appendChild(makeElement("p", "summary-empty", "Pro aktuální výběr nejsou žádné akce."));
     return;
   }
 
@@ -614,28 +628,44 @@ function getSlotHeight() {
 function showTrainingHours() {
   $("#calendarScroll").scrollTop = ((TRAINING_START_MINUTES - START_MINUTES) / SLOT_MINUTES) * getSlotHeight();
 }
+function calendarColumns() {
+  if (currentDay && sourceLocations.length) {
+    return sourceLocations.map(({ name }) => ({ date:currentDay, location:name }));
+  }
+  return DAYS.map((_, index) => ({ date:addDays(currentWeek, index), location:"" }));
+}
 function renderCalendar() {
   const scroll = $("#calendarScroll"), previousTop = scroll.scrollTop, previousLeft = scroll.scrollLeft, slotHeight = getSlotHeight();
   const endWeek = addDays(currentWeek, 6);
   const firstFormatter = new Intl.DateTimeFormat("cs-CZ", { day:"numeric", month:"long" });
   const lastFormatter = new Intl.DateTimeFormat("cs-CZ", { day:"numeric", month:"long", year:"numeric" });
-  $("#rangeLabel").textContent = `${firstFormatter.format(currentWeek)} – ${lastFormatter.format(endWeek)}`;
+  const selectedLocation = $("#locationFilter").value;
+  $("#rangeLabel").textContent = currentDay
+    ? new Intl.DateTimeFormat("cs-CZ", {weekday:"long", day:"numeric", month:"long", year:"numeric"}).format(currentDay)
+    : `${firstFormatter.format(currentWeek)} – ${lastFormatter.format(endWeek)}`;
+  $("#weekView").setAttribute("aria-pressed", String(!currentDay));
+  $("#dayView").setAttribute("aria-pressed", String(Boolean(currentDay)));
+  $("#previousWeek").setAttribute("aria-label", currentDay ? "Předchozí den" : "Předchozí týden");
+  $("#nextWeek").setAttribute("aria-label", currentDay ? "Další den" : "Další týden");
+  $("#calendarDayPicker").classList.toggle("hidden", !currentDay);
+  $("#calendarDayPicker").value = currentDay ? dateKey(currentDay) : "";
+  $("#locationFilter").disabled = Boolean(currentDay);
 
+  const columns = calendarColumns();
   const calendar = $("#calendar"), fragment = document.createDocumentFragment(), corner = makeElement("div", "corner");
+  calendar.style.setProperty("--calendar-columns", columns.length);
   corner.style.gridColumn = "1";
   corner.style.gridRow = "1";
   fragment.appendChild(corner);
-  const weekDates = [];
-  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-    const date = addDays(currentWeek, dayIndex);
-    weekDates.push(dateKey(date));
-    const dayHeader = makeElement("div", `day-header${dateKey(date) === dateKey(new Date()) ? " is-today" : ""}`);
-    dayHeader.style.gridColumn = String(dayIndex + 2);
-    dayHeader.style.gridRow = "1";
-    dayHeader.appendChild(document.createTextNode(DAYS[dayIndex]));
-    dayHeader.appendChild(makeElement("span", "", `${date.getDate()}.${date.getMonth() + 1}.`));
-    fragment.appendChild(dayHeader);
-  }
+  columns.forEach(({ date, location }, index) => {
+    const today = dateKey(date) === dateKey(new Date());
+    const header = makeElement("div", location ? "day-header venue-header" : `day-header${today ? " is-today" : ""}`);
+    header.style.gridColumn = String(index + 2);
+    header.style.gridRow = "1";
+    header.textContent = location || DAYS[index];
+    if (!location) header.appendChild(makeElement("span", "", `${date.getDate()}.${date.getMonth() + 1}.`));
+    fragment.appendChild(header);
+  });
   const rowCount = (END_MINUTES - START_MINUTES) / SLOT_MINUTES;
   for (let row = 0; row < rowCount; row++) {
     const current = START_MINUTES + row * SLOT_MINUTES;
@@ -643,10 +673,11 @@ function renderCalendar() {
     label.style.gridColumn = "1";
     label.style.gridRow = String(row + 2);
     fragment.appendChild(label);
-    for (let day = 0; day < 7; day++) {
+    for (let day = 0; day < columns.length; day++) {
       const slot = makeElement("div", "slot");
       if (adminMode && connected) {
-        slot.dataset.date = weekDates[day];
+        slot.dataset.date = dateKey(columns[day].date);
+        slot.dataset.location = columns[day].location;
         slot.dataset.start = String(current);
       }
       slot.style.gridColumn = String(day + 2);
@@ -660,10 +691,15 @@ function renderCalendar() {
   calendar.replaceChildren(fragment);
 
   const allEvents = weekEvents();
-  const events = allEvents.filter(event => event.location === $("#locationFilter").value);
-  renderSummary($("#teamFilter").value ? allEvents : events);
+  const events = currentDay
+    ? allEvents.filter(event => event.date === dateKey(currentDay))
+    : allEvents.filter(event => !selectedLocation || event.location === selectedLocation);
+  renderSummary(!currentDay && $("#teamFilter").value ? allEvents : events);
   const visibleEvents = events.filter(event => minutes(event.start) < END_MINUTES && minutes(event.end) > START_MINUTES);
-  const placements = weekDates.map(dayKey => assignLanes(visibleEvents.filter(event => event.date === dayKey)));
+  const placements = columns.map(({ date, location }) => {
+    const key = dateKey(date);
+    return assignLanes(visibleEvents.filter(event => event.date === key && (!location || event.location === location)));
+  });
   placements.forEach((day, dayIndex) => {
     day.forEach(({ event, lane, laneCount }) => {
       const start = minutes(event.start), end = minutes(event.end);
@@ -674,8 +710,8 @@ function renderCalendar() {
       button.type = "button";
       button.style.top = `${top + 1}px`;
       button.style.height = `${Math.max(1, height - 2)}px`;
-      button.style.left = `${((dayIndex + lane / laneCount) / 7) * 100}%`;
-      button.style.width = `calc(${100 / (7 * laneCount)}% - 2px)`;
+      button.style.left = `${((dayIndex + lane / laneCount) / columns.length) * 100}%`;
+      button.style.width = `calc(${100 / (columns.length * laneCount)}% - 2px)`;
       const name = event.teams.length ? event.teams.join(", ") : typeLabel(event.type);
       paintTeam(button, event.teams[0]);
       const time = makeElement("span", "event-time");
@@ -701,11 +737,13 @@ function dropTarget(clientX, clientY, duration, grabOffset) {
   const headerHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-height")) || 60;
   if (clientX < view.left || clientX >= view.right || clientY < view.top + headerHeight || clientY >= view.bottom ||
       clientX < rect.left || clientX >= rect.right || clientY < rect.top || clientY >= rect.bottom) return null;
-  const day = Math.floor((clientX - rect.left) / (rect.width / 7));
+  const columns = calendarColumns();
+  const index = Math.floor((clientX - rect.left) / (rect.width / columns.length));
+  const column = columns[index];
   const elapsedMinutes = ((clientY - rect.top - grabOffset) / getSlotHeight()) * SLOT_MINUTES;
   const start = START_MINUTES + Math.round(elapsedMinutes / DRAG_STEP_MINUTES) * DRAG_STEP_MINUTES;
-  if (day < 0 || day > 6 || start < START_MINUTES || start + duration > END_MINUTES) return null;
-  return { date:dateKey(addDays(currentWeek, day)), start, end:start + duration };
+  if (!column || start < START_MINUTES || start + duration > END_MINUTES) return null;
+  return { date:dateKey(column.date), location:column.location, start, end:start + duration };
 }
 function beginGesture(pointerEvent, data) {
   if (mobileLayout.matches && pointerEvent.pointerType === "touch") return;
@@ -740,7 +778,7 @@ function updateGhost() {
   gesture.ghost.style.left = `${gesture.x}px`;
   gesture.ghost.style.top = `${gesture.y}px`;
   gesture.ghost.classList.toggle("invalid", !destination);
-  gesture.ghost.textContent = destination ? `${name} · ${formatTime(destination.start)}–${formatTime(destination.end)}` : `${name} · přesuň do kalendáře`;
+  gesture.ghost.textContent = destination ? `${name} · ${formatTime(destination.start)}–${formatTime(destination.end)}${destination.location ? " · " + destination.location : ""}` : `${name} · přesuň do kalendáře`;
 }
 function onGestureMove(event) {
   if (!gesture || event.pointerId !== gesture.pointerId) return;
@@ -916,9 +954,9 @@ function openNewEvent(team = "", destination = null, type = "training") {
   fillEventSelects(team ? [team] : []);
   $("#eventTitle").textContent = "Nová akce";
   $("#eventType").value = type;
-  $("#eventLocation").value = $("#locationFilter").value;
+  $("#eventLocation").value = destination?.location || (currentDay ? "" : $("#locationFilter").value);
   const today = dateKey(new Date()), first = dateKey(currentWeek), last = dateKey(addDays(currentWeek, 6));
-  $("#eventDate").value = destination ? destination.date : (today >= first && today <= last ? today : first);
+  $("#eventDate").value = destination ? destination.date : currentDay ? dateKey(currentDay) : (today >= first && today <= last ? today : first);
   const start = destination ? destination.start : TRAINING_START_MINUTES;
   setEventTime($("#eventStart"), formatTime(start));
   applyNewEventDefaults(true);
@@ -1094,7 +1132,7 @@ async function moveEvent(event, destination) {
   try {
     const updated = {
       id:event.id, revision:event.revision, occurrence:event.occurrence, teams:event.teams,
-      location:event.location, type:event.type, size:event.size, note:event.note,
+      location:destination.location || event.location, type:event.type, size:event.size, note:event.note,
       date:destination.date,
       start:formatTime(destination.start),
       end:formatTime(destination.end)
@@ -1131,6 +1169,8 @@ async function deleteEvent(event) {
   }
 }
 function updateAdminView() {
+  if (!adminMode) currentDay = null;
+  $("#calendarSwitch").classList.toggle("hidden", !adminMode);
   $("#adminPanel").classList.toggle("hidden", !adminMode);
   $("#editTeamDefaults").classList.toggle("hidden", !adminMode || !teamAdminAvailable);
   $("#adminButton").textContent = adminMode ? "UKONČIT ADMINISTRACI" : "ADMINISTRACE";
@@ -1238,7 +1278,7 @@ $("#calendar").addEventListener("click", event => {
   if (!slot || !adminMode || !connected || saving || suppressClick) return;
   const box = slot.getBoundingClientRect();
   const start = Number(slot.dataset.start) + (event.clientY >= box.top + box.height / 2 ? DRAG_STEP_MINUTES : 0);
-  openNewEvent($("#teamFilter").value, { date:slot.dataset.date, start });
+  openNewEvent($("#teamFilter").value, { date:slot.dataset.date, location:slot.dataset.location, start });
 });
 $("#eventStart").addEventListener("change", () => {
   if (!editingEvent) applyNewEventDefaults(false);
@@ -1295,13 +1335,17 @@ $("#eventForm").addEventListener("submit", async event => {
   setStatus("Ukládám akci…");
   try {
     await postAction(batch ? "saveTeamTrainings" : "saveEvent", { event:item });
-    if (!editingEvent || !editingEvent.repeat || editingEvent.occurrence) currentWeek = startOfWeek(parseDateKey(date));
+    if (!editingEvent || !editingEvent.repeat || editingEvent.occurrence) {
+      const selectedDate = parseDateKey(date);
+      currentWeek = startOfWeek(selectedDate);
+      if (currentDay) currentDay = selectedDate;
+    }
     closeModal("eventModal");
     endSaving();
     const loaded = await loadData(true);
     if (loaded) {
       const hiddenByFilter = ($("#teamFilter").value && !item.teams.includes($("#teamFilter").value)) ||
-        ($("#locationFilter").value && $("#locationFilter").value !== location);
+        (!currentDay && $("#locationFilter").value && $("#locationFilter").value !== location);
       setStatus(hiddenByFilter ? "Akce byla uložena, ale aktuální filtr ji skrývá." : batch ? `Uloženy tréninky týmů: ${teams.join(", ")}.` : "Akce byla uložena do společného rozpisu.");
     }
     return;
@@ -1312,9 +1356,41 @@ $("#eventForm").addEventListener("submit", async event => {
   }
 });
 
-$("#previousWeek").addEventListener("click", () => { currentWeek = addDays(currentWeek, -7); renderCalendar(); });
-$("#nextWeek").addEventListener("click", () => { currentWeek = addDays(currentWeek, 7); renderCalendar(); });
-$("#todayButton").addEventListener("click", () => { currentWeek = startOfWeek(new Date()); renderCalendar(); });
+function selectCalendarDay(day) {
+  currentDay = day;
+  currentWeek = startOfWeek(day);
+  renderCalendar();
+}
+function stepCalendar(direction) {
+  if (currentDay) selectCalendarDay(addDays(currentDay, direction));
+  else {
+    currentWeek = addDays(currentWeek, 7 * direction);
+    renderCalendar();
+  }
+}
+$("#weekView").addEventListener("click", () => {
+  currentDay = null;
+  renderCalendar();
+});
+$("#dayView").addEventListener("click", () => {
+  if (!adminMode || currentDay) return;
+  const today = new Date();
+  selectCalendarDay(dateKey(startOfWeek(today)) === dateKey(currentWeek) ? today : currentWeek);
+  if (mobileLayout.matches && !$("#calendarGridPanel").classList.contains("mobile-grid-open")) $("#toggleCalendar").click();
+});
+$("#calendarDayPicker").addEventListener("change", event => {
+  const day = parseDateKey(event.target.value);
+  if (adminMode && currentDay && day) selectCalendarDay(day);
+});
+$("#previousWeek").addEventListener("click", () => stepCalendar(-1));
+$("#nextWeek").addEventListener("click", () => stepCalendar(1));
+$("#todayButton").addEventListener("click", () => {
+  if (currentDay) selectCalendarDay(new Date());
+  else {
+    currentWeek = startOfWeek(new Date());
+    renderCalendar();
+  }
+});
 $("#toggleCalendar").addEventListener("click", () => {
   const button = $("#toggleCalendar");
   const open = $("#calendarGridPanel").classList.toggle("mobile-grid-open");
