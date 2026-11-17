@@ -187,6 +187,8 @@ textarea { resize:vertical; }
 .team-options { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; }
 .team-options label { display: inline-flex; align-items: center; gap: 0.3rem; }
 .team-options input[type="checkbox"] { width: auto; margin: 0; }
+.repeat-check { display:flex; align-items:center; gap:8px; min-height:44px; }
+.repeat-check input { width:18px; height:18px; margin:0; }
 </style>
 </head>
 <body>
@@ -302,6 +304,14 @@ textarea { resize:vertical; }
         <div class="field"><label for="eventLocation">Sportoviště</label><select id="eventLocation" required></select></div>
         <div class="field"><label for="eventSize">Rozsah hřiště</label><select id="eventSize"><option value="">Neuveden</option><option value="1">Celé hřiště</option><option value="0.5">Polovina hřiště</option><option value="0.25">Čtvrtina hřiště</option></select></div>
         <div class="field"><label for="eventNote">Poznámka</label><textarea id="eventNote" rows="2" maxlength="1000"></textarea></div>
+        <div id="repeatControls" class="field hidden">
+          <label class="repeat-check"><input id="eventRepeat" type="checkbox"> Pravidelně každý týden</label>
+          <div id="repeatEnd" class="field hidden">
+            <label for="eventRepeatUntil">Opakovat do (včetně)</label>
+            <input id="eventRepeatUntil" type="date">
+            <p class="form-help">Prázdné datum znamená opakování bez konce.</p>
+          </div>
+        </div>
         <p id="eventError" class="form-error hidden" role="alert"></p>
         <p class="form-help">Akce se uloží do společného rozpisu až po potvrzení serverem.</p>
         <div class="modal-actions"><button class="button" data-close="eventModal" type="button">Zrušit</button><button id="saveEvent" class="button primary" type="submit">Uložit akci</button></div>
@@ -325,6 +335,7 @@ const $ = selector => document.querySelector(selector);
 const pad = value => String(value).padStart(2, "0");
 
 let sourceTeams = [];
+let repeatAvailable = false;
 let teamDefaults = new Map();
 let requestedTeam = new URLSearchParams(location.search).get("tym");
 let sourceLocations = [];
@@ -418,6 +429,7 @@ function normalizeEvent(item) {
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || typeof item.location !== "string") return null;
   return {
     id: String(item.id),
+    repeat: item.repeat && typeof item.repeat === "object" ? item.repeat : null,
     revision: item.revision == null ? "" : String(item.revision),
     date: item.date,
     start: formatTime(start),
@@ -473,10 +485,23 @@ function renderTeams() {
 function weekEvents() {
   const selectedTeam = $("#teamFilter").value, selectedLocation = $("#locationFilter").value;
   const first = dateKey(currentWeek), last = dateKey(addDays(currentWeek, 6));
-  return sourceEvents.filter(event => event.date >= first && event.date <= last &&
+  return sourceEvents.flatMap(event => {
+    if (!event.repeat) return [event];
+    const { until, exceptions } = event.repeat;
+    const dates = Array.from({length:7}, (_, i) => addDays(currentWeek, i));
+    const weekday = parseDateKey(event.date).getDay();
+    const regular = dates.filter(day => day.getDay() === weekday).map(dateKey)
+      .filter(date => date >= event.date && (!until || date <= until) &&
+        !Object.prototype.hasOwnProperty.call(exceptions, date))
+      .map(date => ({ ...event, date, occurrence:date, series:event }));
+    const moved = Object.entries(exceptions).filter(([, value]) => value && value.date >= first && value.date <= last)
+      .map(([occurrence, value]) => ({ ...event, ...value, occurrence, series:event }));
+    return regular.concat(moved);
+  }).filter(event => event.date >= first && event.date <= last &&
     (!selectedTeam || event.teams.includes(selectedTeam)) &&
     (!selectedLocation || event.location === selectedLocation));
 }
+
 function renderSummary(events) {
   const team = $("#teamFilter").value, location = $("#locationFilter").value;
   const title = $("#summaryTitle"), caption = $("#summaryCaption"), list = $("#summaryList");
@@ -744,16 +769,25 @@ function openEventDetails(event) {
     appendDetail(list, "Rozsah hřiště", labels[event.size]);
   }
   if (event.note) appendDetail(list, "Poznámka", event.note);
+  if (event.series) {
+    appendDetail(list, "Opakování", event.series.repeat.until ?
+      `Každý týden do ${new Intl.DateTimeFormat("cs-CZ").format(parseDateKey(event.series.repeat.until))}` :
+      "Každý týden · bez konce");
+  }
   if (adminMode) {
-    const edit = makeElement("button", "button primary", "Upravit");
-    edit.type = "button";
-    edit.disabled = !connected || saving;
-    edit.addEventListener("click", () => openEditEvent(event));
-    const remove = makeElement("button", "button danger", "Smazat");
-    remove.type = "button";
-    remove.disabled = !connected || saving;
-    remove.addEventListener("click", () => deleteEvent(event));
-    actions.append(edit, remove);
+    function addAction(label, style, handler) {
+      const button = makeElement("button", `button ${style}`, label);
+      button.type = "button";
+      button.disabled = !connected || saving;
+      button.addEventListener("click", handler);
+      actions.appendChild(button);
+    }
+    addAction(event.series ? "Upravit tento termín" : "Upravit", "primary", () => openEditEvent(event));
+    addAction(event.series ? "Smazat tento termín" : "Smazat", "danger", () => deleteEvent(event));
+    if (event.series) {
+      addAction("Upravit celou sérii", "", () => openEditEvent(event.series));
+      addAction("Smazat celou sérii", "danger", () => deleteEvent(event.series));
+    }
   }
   openModal("detailModal");
 }
@@ -796,9 +830,20 @@ function fillEventSelects(selectedTeams) {
   }
   populateSelect($("#eventLocation"), "Vyber sportoviště", sourceLocations.map(item => item.name));
 }
+function resetRepeatFields(event = null) {
+  const series = Boolean(event && event.repeat && !event.occurrence);
+  const singleOccurrence = Boolean(event && event.occurrence);
+  $("#repeatControls").classList.toggle("hidden", singleOccurrence || !repeatAvailable);
+  $("#eventRepeat").checked = series;
+  $("#eventRepeat").disabled = series || singleOccurrence || !repeatAvailable;
+  $("#eventRepeatUntil").value = series ? event.repeat.until : "";
+  $("#repeatEnd").classList.toggle("hidden", !series);
+  $("#eventDate").readOnly = series;
+}
 function openNewEvent(team = "", destination = null, type = "training") {
   if (!adminMode || !connected || saving) return;
   editingEvent = null;
+  resetRepeatFields();
   fillEventSelects(team ? [team] : []);
   $("#eventTitle").textContent = "Nová akce";
   $("#eventType").value = type;
@@ -815,8 +860,10 @@ function openNewEvent(team = "", destination = null, type = "training") {
 function openEditEvent(event) {
   if (!adminMode || !connected || saving) return;
   editingEvent = event;
+  resetRepeatFields(event);
   fillEventSelects(event.teams);
-  $("#eventTitle").textContent = "Upravit akci";
+  $("#eventTitle").textContent = event.occurrence ? "Upravit tento termín" :
+    event.repeat ? "Upravit celou sérii" : "Upravit akci";
   $("#eventType").value = event.type;
   $("#eventDate").value = event.date;
   $("#eventStart").value = event.start;
@@ -867,6 +914,7 @@ async function loadData(silent = false) {
     }));
     const events = data.events.map(normalizeEvent);
     if (events.some(event => !event)) throw new Error("Některé akce mají neplatné údaje. Zkontroluj list Akce v tabulce.");
+    repeatAvailable = data.weeklyRepeat === true;
     sourceTeams = teams;
     teamDefaults = new Map((Array.isArray(data.teamDefaults) ? data.teamDefaults : [])
       .filter(item => item && teams.includes(item.team) && Number.isInteger(item.duration) &&
@@ -962,7 +1010,8 @@ async function moveEvent(event, destination) {
   setStatus("Ukládám přesun…");
   try {
     const updated = {
-      ...event,
+      id:event.id, revision:event.revision, occurrence:event.occurrence, teams:event.teams,
+      location:event.location, type:event.type, size:event.size, note:event.note,
       date:destination.date,
       start:formatTime(destination.start),
       end:formatTime(destination.end)
@@ -980,11 +1029,13 @@ async function moveEvent(event, destination) {
   }
 }
 async function deleteEvent(event) {
-  if (!window.confirm("Opravdu chceš tuto akci smazat ze společného rozpisu?")) return;
+  const message = event.occurrence ? "Smazat jen tento termín? Ostatní termíny série zůstanou." :
+    event.repeat ? "Smazat celou sérii včetně všech minulých i budoucích termínů?" : "Smazat tuto akci ze společného rozpisu?";
+  if (!window.confirm(message)) return;
   if (!beginSaving()) { setStatus("Počkej na načtení rozpisu a zkus to znovu.", true); return; }
   setStatus("Mažu akci…");
   try {
-    await postAction("deleteEvent", { id:event.id, revision:event.revision });
+    await postAction("deleteEvent", { id:event.id, revision:event.revision, occurrence:event.occurrence });
     closeModal("detailModal");
     endSaving();
     const loaded = await loadData(true);
@@ -1037,6 +1088,9 @@ $("#eventTeam").addEventListener("change", () => {
 $("#eventType").addEventListener("change", () => {
   if (!editingEvent) applyNewEventDefaults(true);
 });
+$("#eventRepeat").addEventListener("change", () => {
+  $("#repeatEnd").classList.toggle("hidden", !$("#eventRepeat").checked);
+});
 $("#eventForm").addEventListener("submit", async event => {
   event.preventDefault();
   if (!adminMode || !connected) { showFormError($("#eventError"), "Nejdřív znovu načti rozpis a otevři administraci."); return; }
@@ -1057,13 +1111,25 @@ $("#eventForm").addEventListener("submit", async event => {
     teams, location, type, note:$("#eventNote").value.trim()
   };
   if ($("#eventSize").value) item.size = Number($("#eventSize").value);
-  if (editingEvent) { item.id = editingEvent.id; item.revision = editingEvent.revision; }
+  if (editingEvent) {
+    item.id = editingEvent.id;
+    item.revision = editingEvent.revision;
+    item.occurrence = editingEvent.occurrence;
+  }
+  if (repeatAvailable && !item.occurrence && $("#eventRepeat").checked) {
+    item.repeatWeekly = true;
+    item.repeatUntil = $("#eventRepeatUntil").value;
+    if (item.repeatUntil && item.repeatUntil < date) {
+      showFormError($("#eventError"), "Konec opakování musí být v den první akce nebo později.");
+      return;
+    }
+  }
   if (!beginSaving()) { showFormError($("#eventError"), "Počkej na načtení rozpisu a zkus to znovu."); return; }
   $("#eventError").classList.add("hidden");
   setStatus("Ukládám akci…");
   try {
     await postAction("saveEvent", { event:item });
-    currentWeek = startOfWeek(parseDateKey(date));
+    if (!editingEvent || !editingEvent.repeat || editingEvent.occurrence) currentWeek = startOfWeek(parseDateKey(date));
     closeModal("eventModal");
     endSaving();
     const loaded = await loadData(true);
