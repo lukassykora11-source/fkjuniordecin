@@ -129,6 +129,39 @@ textarea { resize:vertical; }
 .detail-list dt { color:#718097; font-size:11px; font-weight:800; text-transform:uppercase; }
 .detail-list dd { margin:3px 0 0; color:var(--ink); white-space:pre-wrap; }
 .detail-actions { margin-top:16px; }
+#toggleCalendar,.summary-day-heading,.desktop-team-prompt { display:none; }
+.summary-day,.summary-day-events { display:contents; }
+@media(min-width:761px) {
+  .week-summary.all-teams .summary-list,.week-summary.all-teams .summary-caption { display:none; }
+  .week-summary.all-teams .desktop-team-prompt { display:block; }
+}
+@media(max-width:760px) {
+  #toggleCalendar { display:inline-flex; align-items:center; min-height:44px; }
+  #calendarGridPanel:not(.mobile-grid-open),.calendar-card:not(.mobile-grid-open) .grid-help,
+  .calendar-card:not(.mobile-grid-open) #trainingHours,.desktop-drag-help { display:none; }
+  .toolbar { padding:12px; }
+  .range-label { min-width:0; flex:1 1 145px; text-align:left; }
+  .nav .button,.footer-actions .button,.team-chip,.admin-head .button,.close { min-height:44px; }
+  .nav-button,.close { min-width:44px; }
+  .admin-options { grid-template-columns:1fr; }
+  .team-chip,.event.movable { touch-action:pan-y; cursor:pointer; }
+  .week-summary { padding:14px 12px; }
+  .summary-list,.summary-day,.summary-day-events { display:grid; gap:8px; }
+  .summary-list { gap:16px; }
+  .summary-day-heading { display:block; margin:0; font-size:14px; color:var(--dark); }
+  .summary-day-heading.is-today { color:var(--blue); }
+  .summary-pill { width:100%; min-height:56px; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:4px 12px; }
+  .pill-day { display:none; }
+  .pill-time { grid-column:2; grid-row:1 / span 2; font-size:14px; }
+  .pill-title { grid-column:1; grid-row:1; font-size:15px; overflow-wrap:anywhere; }
+  .pill-meta { grid-column:1; max-width:none; font-size:13px; }
+  .modal { max-height:calc(100dvh - 20px); }
+  .backdrop { padding:10px; }
+  .modal input:not([type="checkbox"]),.modal select,.modal textarea,.filters select { min-height:44px; font-size:16px; }
+  .modal-actions .button { min-height:44px; }
+  .team-options label { min-height:44px; padding-inline:6px; }
+  .team-options input[type="checkbox"] { min-width:18px; min-height:18px; }
+}
 @media(max-width:900px) {
   .filters { grid-template-columns:1fr 1fr; }
   .filter-note { grid-column:1 / -1; }
@@ -151,6 +184,9 @@ textarea { resize:vertical; }
   .calendar-footer { align-items:stretch; flex-direction:column; }
   .footer-actions .button { flex:1; }
 }
+.team-options { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; }
+.team-options label { display: inline-flex; align-items: center; gap: 0.3rem; }
+.team-options input[type="checkbox"] { width: auto; margin: 0; }
 </style>
 </head>
 <body>
@@ -178,7 +214,7 @@ textarea { resize:vertical; }
   <section class="filters" aria-label="Filtry rozpisu">
     <div class="field"><label for="teamFilter">Zobrazit tým</label><select id="teamFilter"><option value="">Všechny týmy</option></select></div>
     <div class="field"><label for="locationFilter">Zobrazit sportoviště</label><select id="locationFilter"><option value="">Všechna sportoviště</option></select></div>
-    <div class="filter-note"><b>Rychlý přehled:</b> vyber tým a nad kalendářem uvidíš přesné časy jeho akcí v daném týdnu.</div>
+    <button id="copyTeamLink" class="button hidden" type="button">Zkopírovat odkaz na tým</button>
   </section>
 
   <section class="calendar-card" aria-label="Týdenní kalendář">
@@ -189,6 +225,7 @@ textarea { resize:vertical; }
         <button id="nextWeek" class="button nav-button" type="button" aria-label="Další týden">›</button>
       </div>
       <div id="rangeLabel" class="range-label" aria-live="polite"></div>
+      <button id="toggleCalendar" class="button" type="button" aria-expanded="false" aria-controls="calendarGridPanel">Zobrazit kalendář</button>
       <div class="legend" aria-label="Legenda">
         <span><i></i>Trénink</span><span><i class="match-dot"></i>Zápas</span>
         <span><i class="external-dot"></i>Externí pronájem</span><span><i class="blocked-dot"></i>Blokace</span>
@@ -198,28 +235,31 @@ textarea { resize:vertical; }
     <section id="adminPanel" class="admin-panel hidden" aria-label="Administrace">
       <div class="admin-head">
         <div>
-          <strong>Týmy pro rychlé přidání</strong>
-          <p>Přetáhni tým do kalendáře nebo na něj klikni a vyplň formulář.</p>
+          <strong>Přidat trénink</strong>
+          <p>Klikni na tým. Délka tréninku a část hřiště se doplní automaticky.</p>
         </div>
-        <button id="addBlocked" class="button" type="button">Přidat blokaci</button>
+        <div><button id="addMatch" class="button" type="button">Přidat zápas</button> <button id="addBlocked" class="button" type="button">Přidat blokaci</button></div>
       </div>
       <div id="teamList" class="team-list"></div>
       <div class="admin-options">
         <div class="field"><label for="newLocation">Sportoviště pro novou akci</label><select id="newLocation"></select></div>
-        <div class="filter-note">Akci otevřeš kliknutím. Podržením a přetažením ji přesuneš. Přetažení se řídí čtvrthodinami a délka akce zůstane zachovaná.</div>
+        <div class="filter-note desktop-drag-help">Akci otevřeš kliknutím. Podržením a přetažením ji přesuneš. Přetažení se řídí čtvrthodinami a délka akce zůstane zachovaná.</div>
       </div>
-      <p class="admin-note">Změny se po potvrzeném uložení zapisují do společné Google tabulky. Heslo se ověřuje při každém zápisu.</p>
+      
     </section>
 
-    <section class="week-summary" aria-labelledby="summaryTitle" aria-live="polite">
+    <section class="week-summary all-teams" aria-labelledby="summaryTitle" aria-live="polite">
       <div class="summary-heading"><h2 id="summaryTitle">Přehled týmu</h2><span id="summaryCaption" class="summary-caption"></span></div>
+      <p class="summary-empty desktop-team-prompt">Vyber tým pro jeho týdenní přehled.</p>
       <div id="summaryList" class="summary-list"></div>
     </section>
 
+    <div id="calendarGridPanel">
     <div class="calendar-info"><span><b>Náhled:</b> klikni na akci nebo na její přehledovou kartu pro další informace.</span><span id="eventCount"></span></div>
     <div id="calendarScroll" class="calendar-scroll" tabindex="0" aria-label="Kalendář, posuvný svisle i vodorovně"><div id="calendar" class="calendar"></div></div>
+    </div>
     <div class="calendar-footer">
-      <p>Kalendář se otevře přibližně od 14:00 do 20:00. Další hodiny zobrazíš svislým posunem; víkend je vpravo.</p>
+      <p class="grid-help">Kalendář se otevře přibližně od 14:00 do 20:00. Další hodiny zobrazíš svislým posunem; víkend je vpravo.</p>
       <div class="footer-actions">
         <button id="refreshButton" class="button today-button" type="button">Obnovit rozpis</button>
         <button id="trainingHours" class="button today-button" type="button">Čas tréninků</button>
@@ -255,7 +295,7 @@ textarea { resize:vertical; }
     <div class="modal-body">
       <form id="eventForm" class="modal-form">
         <div class="field"><label for="eventType">Typ akce</label><select id="eventType"><option value="training">Trénink</option><option value="match">Zápas</option><option value="blocked">Blokace</option></select></div>
-        <div class="field"><label for="eventTeam">Tým</label><select id="eventTeam"></select><p class="form-help">Pro blokaci není tým povinný.</p></div>
+        <div class="field"><span id="eventTeamLabel">Týmy</span><div id="eventTeam" class="team-options" role="group" aria-labelledby="eventTeamLabel"></div><p class="form-help">Vyber jeden nebo více týmů. U blokace může výběr zůstat prázdný.</p></div>
         <div class="field"><label for="eventDate">Datum</label><input id="eventDate" type="date" required></div>
         <div class="field"><label for="eventStart">Začátek</label><input id="eventStart" type="time" step="60" required></div>
         <div class="field"><label for="eventEnd">Konec</label><input id="eventEnd" type="time" step="60" required></div>
@@ -278,12 +318,15 @@ const TRAINING_START_MINUTES = 840;
 const SLOT_MINUTES = 30;
 const DRAG_STEP_MINUTES = 15;
 const DEFAULT_DURATION = 90;
+const mobileLayout = window.matchMedia("(max-width:760px)");
 const DAYS = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
 const LONG_DAYS = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"];
 const $ = selector => document.querySelector(selector);
 const pad = value => String(value).padStart(2, "0");
 
 let sourceTeams = [];
+let teamDefaults = new Map();
+let requestedTeam = new URLSearchParams(location.search).get("tym");
 let sourceLocations = [];
 let sourceEvents = [];
 let currentWeek = startOfWeek(new Date());
@@ -438,32 +481,45 @@ function renderSummary(events) {
   const team = $("#teamFilter").value, location = $("#locationFilter").value;
   const title = $("#summaryTitle"), caption = $("#summaryCaption"), list = $("#summaryList");
   list.replaceChildren();
-  if (!team) {
-    title.textContent = "Přehled týmu";
-    caption.textContent = "";
-    list.appendChild(makeElement("p", "summary-empty", "Vyber svůj tým ve filtru a tady uvidíš přesné časy jeho akcí v tomto týdnu."));
-    return;
-  }
-  title.textContent = `Tento týden · ${team}`;
-  caption.textContent = location ? `Sportoviště: ${location} · kliknutím otevřeš detail` : "Kliknutím na kartu otevřeš detail akce";
-  const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date) || minutes(a.start) - minutes(b.start) || minutes(a.end) - minutes(b.end) || a.location.localeCompare(b.location, "cs"));
+  title.textContent = team ? `Rozpis týmu · ${team}` : "Akce v tomto týdnu";
+  caption.textContent = location ? `Sportoviště: ${location}` : "";
+  title.closest(".week-summary").classList.toggle("all-teams", !team);
+  const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date) ||
+    minutes(a.start) - minutes(b.start) || minutes(a.end) - minutes(b.end) ||
+    a.location.localeCompare(b.location, "cs"));
   if (!sorted.length) {
-    list.appendChild(makeElement("p", "summary-empty", "Pro vybraný tým a filtry nejsou v daném týdnu žádné akce."));
+    list.appendChild(makeElement("p", "summary-empty", "V tomto týdnu nejsou pro aktuální výběr žádné akce."));
     return;
   }
-  sorted.forEach(event => {
+
+  const today = dateKey(new Date());
+  let renderedDay = "", dayList;
+  for (const event of sorted) {
     const date = parseDateKey(event.date), weekday = (date.getDay() + 6) % 7;
     const dayText = `${LONG_DAYS[weekday]} ${date.getDate()}. ${date.getMonth() + 1}.`;
+    if (event.date !== renderedDay) {
+      renderedDay = event.date;
+      const day = makeElement("div", "summary-day");
+      const current = event.date === today;
+      day.appendChild(makeElement("h3", `summary-day-heading${current ? " is-today" : ""}`,
+        current ? `Dnes · ${dayText}` : dayText));
+      dayList = makeElement("div", "summary-day-events");
+      day.appendChild(dayList);
+      list.appendChild(day);
+    }
     const button = makeElement("button", `summary-pill ${eventClass(event)}`.trim());
     button.type = "button";
     button.appendChild(makeElement("span", "pill-day", dayText));
+    button.appendChild(makeElement("strong", "pill-title", event.teams.join(", ") || typeLabel(event.type)));
     button.appendChild(makeElement("span", "pill-time", `${event.start}–${event.end}`));
-    button.appendChild(makeElement("span", "pill-meta", `${typeLabel(event.type)} · ${formatDuration(minutes(event.end) - minutes(event.start))}`));
     button.appendChild(makeElement("span", "pill-meta", event.location));
+    button.appendChild(makeElement("span", "pill-meta", typeLabel(event.type)));
+    button.setAttribute("aria-label", `${dayText}, ${event.start} až ${event.end}, ${event.location}, ${typeLabel(event.type)} ${event.teams.join(", ")}`.trim());
     button.addEventListener("click", () => openEventDetails(event));
-    list.appendChild(button);
-  });
+    dayList.appendChild(button);
+  }
 }
+
 function assignLanes(dayEvents) {
   const sorted = [...dayEvents].sort((a, b) => minutes(a.start) - minutes(b.start) || minutes(a.end) - minutes(b.end) || a.id.localeCompare(b.id));
   const groups = [];
@@ -580,9 +636,10 @@ function dropTarget(clientX, clientY, duration) {
   return { date:dateKey(addDays(currentWeek, day)), start, end:start + duration };
 }
 function beginGesture(pointerEvent, data) {
+  if (mobileLayout.matches && pointerEvent.pointerType === "touch") return;
   if (!adminMode || !connected || saving || gesture || (pointerEvent.pointerType === "mouse" && pointerEvent.button !== 0)) return;
   const target = pointerEvent.currentTarget;
-  const duration = data.kind === "new" ? DEFAULT_DURATION : minutes(data.event.end) - minutes(data.event.start);
+  const duration = data.kind === "new" ? trainingDefaults([data.team]).duration : minutes(data.event.end) - minutes(data.event.start);
   gesture = { pointerId:pointerEvent.pointerId, target, data, duration, startX:pointerEvent.clientX, startY:pointerEvent.clientY, x:pointerEvent.clientX, y:pointerEvent.clientY, dragging:false, cancelled:false, ghost:null, timer:null };
   try { target.setPointerCapture(pointerEvent.pointerId); } catch (_) {}
   if (data.kind === "move") gesture.timer = setTimeout(() => { if (gesture && !gesture.cancelled) startDragging(); }, 550);
@@ -700,40 +757,67 @@ function openEventDetails(event) {
   }
   openModal("detailModal");
 }
-function fillEventSelects() {
-  populateSelect($("#eventTeam"), "Bez týmu", sourceTeams);
+function selectedEventTeams() {
+  return Array.from($("#eventTeam").querySelectorAll(":checked"), input => input.value);
+}
+function trainingDefaults(teams) {
+  const settings = teams.map(team => teamDefaults.get(team) || {
+    duration: ["školička", "U6", "U7"].includes(team) ? 60 : DEFAULT_DURATION,
+    size: ["školička", "U6", "U7", "U8", "U9", "U10", "U11"].includes(team) ? 0.25 : 0.5
+  });
+  return {
+    duration: teams.length ? Math.max(...settings.map(item => item.duration)) : DEFAULT_DURATION,
+    size: teams.length ? Math.max(...settings.map(item => item.size)) : ""
+  };
+}
+function applyNewEventDefaults(updateSize) {
+  const type = $("#eventType").value;
+  const settings = type === "training" ? trainingDefaults(selectedEventTeams()) :
+    { duration:DEFAULT_DURATION, size:type === "blocked" ? 1 : "" };
+  const start = minutes($("#eventStart").value);
+  const end = start + settings.duration;
+  $("#eventEnd").value = Number.isFinite(end) && end <= END_MINUTES ? formatTime(end) : "";
+  if (updateSize) $("#eventSize").value = String(settings.size);
+}
+function updateTeamLink() {
+  $("#copyTeamLink").classList.toggle("hidden", !$("#teamFilter").value);
+}
+function fillEventSelects(selectedTeams) {
+  const group = $("#eventTeam");
+  group.replaceChildren();
+  for (const team of new Set([...sourceTeams, ...selectedTeams])) {
+    const label = makeElement("label", "");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = team;
+    input.checked = selectedTeams.includes(team);
+    label.append(input, document.createTextNode(team));
+    group.appendChild(label);
+  }
   populateSelect($("#eventLocation"), "Vyber sportoviště", sourceLocations.map(item => item.name));
 }
 function openNewEvent(team = "", destination = null, type = "training") {
   if (!adminMode || !connected || saving) return;
   editingEvent = null;
-  fillEventSelects();
+  fillEventSelects(team ? [team] : []);
   $("#eventTitle").textContent = "Nová akce";
   $("#eventType").value = type;
-  $("#eventTeam").value = team;
-  $("#eventLocation").value = $("#newLocation").value;
+  $("#eventLocation").value = $("#newLocation").value || $("#locationFilter").value;
   const today = dateKey(new Date()), first = dateKey(currentWeek), last = dateKey(addDays(currentWeek, 6));
   $("#eventDate").value = destination ? destination.date : (today >= first && today <= last ? today : first);
   const start = destination ? destination.start : TRAINING_START_MINUTES;
   $("#eventStart").value = formatTime(start);
-  $("#eventEnd").value = formatTime(destination ? destination.end : start + DEFAULT_DURATION);
-  $("#eventSize").value = "";
+  applyNewEventDefaults(true);
   $("#eventNote").value = "";
   $("#eventError").classList.add("hidden");
   openModal("eventModal");
 }
 function openEditEvent(event) {
   if (!adminMode || !connected || saving) return;
-  if (event.teams.length > 1) {
-    setStatus("Tato akce má více týmů. Pro zachování všech týmů lze upravit čas přetažením; ostatní údaje změň v tabulce.", true);
-    closeModal("detailModal");
-    return;
-  }
-  editingEvent = { ...event, teams:[...event.teams] };
-  fillEventSelects();
+  editingEvent = event;
+  fillEventSelects(event.teams);
   $("#eventTitle").textContent = "Upravit akci";
   $("#eventType").value = event.type;
-  $("#eventTeam").value = event.teams[0] || "";
   $("#eventDate").value = event.date;
   $("#eventStart").value = event.start;
   $("#eventEnd").value = event.end;
@@ -784,10 +868,17 @@ async function loadData(silent = false) {
     const events = data.events.map(normalizeEvent);
     if (events.some(event => !event)) throw new Error("Některé akce mají neplatné údaje. Zkontroluj list Akce v tabulce.");
     sourceTeams = teams;
+    teamDefaults = new Map((Array.isArray(data.teamDefaults) ? data.teamDefaults : [])
+      .filter(item => item && teams.includes(item.team) && Number.isInteger(item.duration) &&
+        item.duration >= 15 && item.duration <= 1020 && item.duration % 15 === 0 && [0.25, 0.5, 1].includes(item.size))
+      .map(item => [item.team, item]));
     sourceLocations = locations;
     sourceEvents = events;
     connected = true;
     populateControls();
+    if (requestedTeam && teams.includes(requestedTeam)) $("#teamFilter").value = requestedTeam;
+    requestedTeam = null;
+    updateTeamLink();
     renderCalendar();
     hideStatus();
     return true;
@@ -839,6 +930,7 @@ function beginSaving() {
   $("#saveEvent").disabled = true;
   $("#adminButton").disabled = true;
   $("#addBlocked").disabled = true;
+  $("#addMatch").disabled = true;
   renderTeams();
   return true;
 }
@@ -847,6 +939,7 @@ function endSaving() {
   $("#saveEvent").disabled = false;
   $("#adminButton").disabled = false;
   $("#addBlocked").disabled = false;
+  $("#addMatch").disabled = false;
   renderTeams();
 }
 async function handleWriteError(error, formElement = null) {
@@ -934,17 +1027,24 @@ $("#loginForm").addEventListener("submit", event => {
   setStatus("Administrace je otevřená. Heslo server ověří při prvním zápisu.");
 });
 $("#addBlocked").addEventListener("click", () => openNewEvent("", null, "blocked"));
+$("#addMatch").addEventListener("click", () => openNewEvent("", null, "match"));
 $("#eventStart").addEventListener("change", () => {
-  const start = minutes($("#eventStart").value);
-  if (!editingEvent && Number.isFinite(start) && start + DEFAULT_DURATION < 1440) $("#eventEnd").value = formatTime(start + DEFAULT_DURATION);
+  if (!editingEvent) applyNewEventDefaults(false);
+});
+$("#eventTeam").addEventListener("change", () => {
+  if (!editingEvent && $("#eventType").value === "training") applyNewEventDefaults(true);
+});
+$("#eventType").addEventListener("change", () => {
+  if (!editingEvent) applyNewEventDefaults(true);
 });
 $("#eventForm").addEventListener("submit", async event => {
   event.preventDefault();
   if (!adminMode || !connected) { showFormError($("#eventError"), "Nejdřív znovu načti rozpis a otevři administraci."); return; }
-  const team = $("#eventTeam").value, date = $("#eventDate").value, type = $("#eventType").value;
+  const teams = selectedEventTeams();
+  const date = $("#eventDate").value, type = $("#eventType").value;
   const start = minutes($("#eventStart").value), end = minutes($("#eventEnd").value);
   const location = $("#eventLocation").value;
-  if ((type !== "blocked" && !team) || !parseDateKey(date) || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || !location) {
+  if ((type !== "blocked" && !teams.length) || !parseDateKey(date) || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || !location) {
     showFormError($("#eventError"), "Vyplň tým, sportoviště, platné datum a čas. U blokace není tým povinný; konec musí být po začátku.");
     return;
   }
@@ -954,7 +1054,7 @@ $("#eventForm").addEventListener("submit", async event => {
   }
   const item = {
     date, start:formatTime(start), end:formatTime(end),
-    teams:team ? [team] : [], location, type, note:$("#eventNote").value.trim()
+    teams, location, type, note:$("#eventNote").value.trim()
   };
   if ($("#eventSize").value) item.size = Number($("#eventSize").value);
   if (editingEvent) { item.id = editingEvent.id; item.revision = editingEvent.revision; }
@@ -983,11 +1083,31 @@ $("#eventForm").addEventListener("submit", async event => {
 $("#previousWeek").addEventListener("click", () => { currentWeek = addDays(currentWeek, -7); renderCalendar(); });
 $("#nextWeek").addEventListener("click", () => { currentWeek = addDays(currentWeek, 7); renderCalendar(); });
 $("#todayButton").addEventListener("click", () => { currentWeek = startOfWeek(new Date()); renderCalendar(); });
+$("#toggleCalendar").addEventListener("click", () => {
+  const button = $("#toggleCalendar");
+  const open = $("#calendarGridPanel").classList.toggle("mobile-grid-open");
+  button.closest(".calendar-card").classList.toggle("mobile-grid-open", open);
+  button.setAttribute("aria-expanded", String(open));
+  button.textContent = open ? "Skrýt kalendář" : "Zobrazit kalendář";
+  if (open) showTrainingHours();
+});
 $("#trainingHours").addEventListener("click", showTrainingHours);
 $("#refreshButton").addEventListener("click", () => loadData(false));
-$("#teamFilter").addEventListener("change", renderCalendar);
+$("#teamFilter").addEventListener("change", () => { updateTeamLink(); renderCalendar(); });
+$("#copyTeamLink").addEventListener("click", async () => {
+  const team = $("#teamFilter").value;
+  if (!team) return;
+  const url = new URL(location.href);
+  url.searchParams.set("tym", team);
+  try {
+    await navigator.clipboard.writeText(url.href);
+    setStatus(`Odkaz na rozpis týmu ${team} je zkopírovaný.`);
+  } catch (_) {
+    window.prompt("Zkopíruj odkaz na rozpis týmu:", url.href);
+  }
+});
 $("#locationFilter").addEventListener("change", renderCalendar);
-$("#clearFilters").addEventListener("click", () => { $("#teamFilter").value = ""; $("#locationFilter").value = ""; renderCalendar(); });
+$("#clearFilters").addEventListener("click", () => { $("#teamFilter").value = ""; $("#locationFilter").value = ""; updateTeamLink(); renderCalendar(); });
 document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => {
   if (!saving) closeModal(button.dataset.close);
 }));
