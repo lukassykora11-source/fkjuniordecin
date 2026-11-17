@@ -101,7 +101,7 @@ textarea { resize:vertical; }
 .slot { border-bottom:1px solid var(--line); border-left:1px solid var(--line); background:#fff; }
 .event-layer { position:relative; grid-column:2 / 9; grid-row:2 / 36; z-index:1; pointer-events:none; }
 .event { position:absolute; overflow:hidden; padding:4px 5px; border:1px solid #b8cff8; border-left:4px solid #3970cd; border-radius:5px; background:#dceaff; color:#174794; box-shadow:0 1px 2px rgba(32,67,132,.08); font-size:10px; font-weight:800; line-height:1.2; pointer-events:auto; text-align:left; }
-.event.movable { touch-action:none; user-select:none; }
+.event.movable { cursor:grab; touch-action:none; user-select:none; }
 .event.match { border-color:#efd170; border-left-color:#d99e00; background:#fff0bd; color:#795700; }
 .event.external { border-color:#b9e6cb; border-left-color:#259a60; background:#e0f7e9; color:#176d43; }
 .event.blocked { border-color:#cbd0da; border-left-color:#737f90; background:#e8eaf0; color:#485567; }
@@ -240,12 +240,12 @@ textarea { resize:vertical; }
           <strong>Přidat trénink</strong>
           <p>Klikni na tým. Délka tréninku a část hřiště se doplní automaticky.</p>
         </div>
-        <div><button id="addMatch" class="button" type="button">Přidat zápas</button> <button id="addBlocked" class="button" type="button">Přidat blokaci</button></div>
+        <div><button id="editTeamDefaults" class="button hidden" type="button">Nastavení týmů</button> <button id="addMatch" class="button" type="button">Přidat zápas</button> <button id="addBlocked" class="button" type="button">Přidat blokaci</button></div>
       </div>
       <div id="teamList" class="team-list"></div>
       <div class="admin-options">
         <div class="field"><label for="newLocation">Sportoviště pro novou akci</label><select id="newLocation"></select></div>
-        <div class="filter-note desktop-drag-help">Akci otevřeš kliknutím. Podržením a přetažením ji přesuneš. Přetažení se řídí čtvrthodinami a délka akce zůstane zachovaná.</div>
+        <div class="filter-note desktop-drag-help">Akci otevřeš kliknutím. Přetažením ji přesuneš. Přetažení se řídí čtvrthodinami a délka akce zůstane zachovaná.</div>
       </div>
       
     </section>
@@ -277,8 +277,9 @@ textarea { resize:vertical; }
     <div class="modal-body">
       <form id="loginForm" class="modal-form">
         <div class="field"><label for="adminPassword">Heslo administrátora</label><input id="adminPassword" type="password" autocomplete="current-password" required></div>
-        <p class="form-help">Zadej heslo nastavené v Google tabulce. Jeho správnost server ověří při uložení nebo smazání akce.</p>
-        <div class="modal-actions"><button class="button" data-close="loginModal" type="button">Zrušit</button><button class="button primary" type="submit">Otevřít administraci</button></div>
+        <p class="form-help">Zadej heslo nastavené v Google tabulce.</p>
+        <p id="loginError" class="form-error hidden" role="alert"></p>
+        <div class="modal-actions"><button class="button" data-close="loginModal" type="button">Zrušit</button><button id="submitLogin" class="button primary" type="submit">Přihlásit se</button></div>
       </form>
     </div>
   </div>
@@ -291,6 +292,22 @@ textarea { resize:vertical; }
   </div>
 </div>
 
+<div id="teamSettingsModal" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="teamSettingsTitle" aria-hidden="true">
+  <div class="modal">
+    <div class="modal-head"><h2 id="teamSettingsTitle">Nastavení týmů</h2><button class="close" data-close="teamSettingsModal" type="button" aria-label="Zavřít">×</button></div>
+    <div class="modal-body">
+      <form id="teamSettingsForm" class="modal-form">
+        <div class="field"><label for="settingsTeam">Tým</label><select id="settingsTeam" required></select></div>
+        <div class="field"><label for="settingsDuration">Délka tréninku</label><select id="settingsDuration" required></select></div>
+        <div class="field"><label for="settingsSize">Část hřiště</label><select id="settingsSize" required><option value="0.25">Čtvrtina hřiště</option><option value="0.5">Polovina hřiště</option><option value="1">Celé hřiště</option></select></div>
+        <p class="form-help">Nastavení platí pro nově přidané tréninky. Uložené termíny se nemění.</p>
+        <p id="settingsError" class="form-error hidden" role="alert"></p>
+        <div class="modal-actions"><button class="button" data-close="teamSettingsModal" type="button">Zavřít</button><button id="saveTeamDefaults" class="button primary" type="submit">Uložit nastavení</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div id="eventModal" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="eventTitle" aria-hidden="true">
   <div class="modal">
     <div class="modal-head"><h2 id="eventTitle">Nová akce</h2><button class="close" data-close="eventModal" type="button" aria-label="Zavřít">×</button></div>
@@ -299,11 +316,12 @@ textarea { resize:vertical; }
         <div class="field"><label for="eventType">Typ akce</label><select id="eventType"><option value="training">Trénink</option><option value="match">Zápas</option><option value="blocked">Blokace</option></select></div>
         <div class="field"><span id="eventTeamLabel">Týmy</span><div id="eventTeam" class="team-options" role="group" aria-labelledby="eventTeamLabel"></div><p class="form-help">Vyber jeden nebo více týmů. U blokace může výběr zůstat prázdný.</p></div>
         <div class="field"><label for="eventDate">Datum</label><input id="eventDate" type="date" required></div>
-        <div class="field"><label for="eventStart">Začátek</label><input id="eventStart" type="time" step="60" required></div>
-        <div class="field"><label for="eventEnd">Konec</label><input id="eventEnd" type="time" step="60" required></div>
+        <div class="field"><label for="eventStart">Začátek</label><select id="eventStart" required></select></div>
+        <div id="eventEndField" class="field"><label for="eventEnd">Konec</label><select id="eventEnd" required></select></div>
         <div class="field"><label for="eventLocation">Sportoviště</label><select id="eventLocation" required></select></div>
-        <div class="field"><label for="eventSize">Rozsah hřiště</label><select id="eventSize"><option value="">Neuveden</option><option value="1">Celé hřiště</option><option value="0.5">Polovina hřiště</option><option value="0.25">Čtvrtina hřiště</option></select></div>
+        <div id="eventSizeField" class="field"><label for="eventSize">Rozsah hřiště</label><select id="eventSize"><option value="">Neuveden</option><option value="1">Celé hřiště</option><option value="0.5">Polovina hřiště</option><option value="0.25">Čtvrtina hřiště</option></select></div>
         <div class="field"><label for="eventNote">Poznámka</label><textarea id="eventNote" rows="2" maxlength="1000"></textarea></div>
+        <p id="teamBatchPreview" class="form-help hidden"></p>
         <div id="repeatControls" class="field hidden">
           <label class="repeat-check"><input id="eventRepeat" type="checkbox"> Pravidelně každý týden</label>
           <div id="repeatEnd" class="field hidden">
@@ -336,12 +354,14 @@ const pad = value => String(value).padStart(2, "0");
 
 let sourceTeams = [];
 let repeatAvailable = false;
+let teamAdminAvailable = false;
 let teamDefaults = new Map();
 let requestedTeam = new URLSearchParams(location.search).get("tym");
 let sourceLocations = [];
 let sourceEvents = [];
 let currentWeek = startOfWeek(new Date());
 let adminPassword = "";
+let loginPending = false;
 let adminMode = false;
 let connected = false;
 let loading = false;
@@ -380,6 +400,27 @@ function minutes(value) {
   return hours <= 23 && mins <= 59 ? hours * 60 + mins : NaN;
 }
 function formatTime(value) { return `${pad(Math.floor(value / 60))}:${pad(value % 60)}`; }
+function fillTimeOptions(select, first, last) {
+  const placeholder = makeElement("option", "", "Vyber čas");
+  placeholder.value = "";
+  select.appendChild(placeholder);
+  for (let time = first; time <= last; time += DRAG_STEP_MINUTES) {
+    const label = formatTime(time);
+    const option = makeElement("option", "", label);
+    option.value = label;
+    select.appendChild(option);
+  }
+}
+function setEventTime(select, value, keepExisting = false) {
+  select.querySelector("[data-existing-time]")?.remove();
+  if (keepExisting && value && !Array.from(select.options).some(option => option.value === value)) {
+    const option = makeElement("option", "", `${value} (stávající čas)`);
+    option.value = value;
+    option.dataset.existingTime = "";
+    select.appendChild(option);
+  }
+  select.value = value;
+}
 function formatDuration(value) {
   const hours = Math.floor(value / 60), mins = value % 60;
   if (!hours) return `${mins} min`;
@@ -637,7 +678,7 @@ function renderCalendar() {
       button.appendChild(makeElement("span", "event-name", name));
       button.appendChild(makeElement("span", "event-detail", `${event.location} · ${event.start}–${event.end}`));
       const description = `${name}, ${event.location}, ${event.start} až ${event.end}`;
-      button.title = adminMode ? `${description}. Podržením lze přesunout.` : description;
+      button.title = adminMode ? `${description}. Přetažením lze přesunout.` : description;
       button.setAttribute("aria-label", description);
       button.addEventListener("click", () => { if (!suppressClick) openEventDetails(event); });
       if (adminMode && connected) button.addEventListener("pointerdown", pointerEvent => beginGesture(pointerEvent, { kind:"move", event }));
@@ -647,7 +688,7 @@ function renderCalendar() {
   scroll.scrollTop = previousTop;
   scroll.scrollLeft = previousLeft;
 }
-function dropTarget(clientX, clientY, duration) {
+function dropTarget(clientX, clientY, duration, grabOffset) {
   const layer = $("#eventLayer"), viewport = $("#calendarScroll");
   if (!layer || !viewport) return null;
   const rect = layer.getBoundingClientRect(), view = viewport.getBoundingClientRect();
@@ -655,8 +696,8 @@ function dropTarget(clientX, clientY, duration) {
   if (clientX < view.left || clientX >= view.right || clientY < view.top + headerHeight || clientY >= view.bottom ||
       clientX < rect.left || clientX >= rect.right || clientY < rect.top || clientY >= rect.bottom) return null;
   const day = Math.floor((clientX - rect.left) / (rect.width / 7));
-  const elapsedMinutes = ((clientY - rect.top) / getSlotHeight()) * SLOT_MINUTES;
-  const start = START_MINUTES + Math.floor(elapsedMinutes / DRAG_STEP_MINUTES) * DRAG_STEP_MINUTES;
+  const elapsedMinutes = ((clientY - rect.top - grabOffset) / getSlotHeight()) * SLOT_MINUTES;
+  const start = START_MINUTES + Math.round(elapsedMinutes / DRAG_STEP_MINUTES) * DRAG_STEP_MINUTES;
   if (day < 0 || day > 6 || start < START_MINUTES || start + duration > END_MINUTES) return null;
   return { date:dateKey(addDays(currentWeek, day)), start, end:start + duration };
 }
@@ -665,9 +706,14 @@ function beginGesture(pointerEvent, data) {
   if (!adminMode || !connected || saving || gesture || (pointerEvent.pointerType === "mouse" && pointerEvent.button !== 0)) return;
   const target = pointerEvent.currentTarget;
   const duration = data.kind === "new" ? trainingDefaults([data.team]).duration : minutes(data.event.end) - minutes(data.event.start);
-  gesture = { pointerId:pointerEvent.pointerId, target, data, duration, startX:pointerEvent.clientX, startY:pointerEvent.clientY, x:pointerEvent.clientX, y:pointerEvent.clientY, dragging:false, cancelled:false, ghost:null, timer:null };
+  const grabOffset = data.kind === "move"
+    ? pointerEvent.clientY - target.getBoundingClientRect().top +
+      (Math.min(0, minutes(data.event.start) - START_MINUTES) / SLOT_MINUTES) * getSlotHeight() + 1
+    : 0;
+  gesture = { pointerId:pointerEvent.pointerId, target, data, duration, grabOffset,
+    startX:pointerEvent.clientX, startY:pointerEvent.clientY, x:pointerEvent.clientX, y:pointerEvent.clientY,
+    dragging:false, ghost:null };
   try { target.setPointerCapture(pointerEvent.pointerId); } catch (_) {}
-  if (data.kind === "move") gesture.timer = setTimeout(() => { if (gesture && !gesture.cancelled) startDragging(); }, 550);
   target.addEventListener("pointermove", onGestureMove);
   target.addEventListener("pointerup", onGestureEnd);
   target.addEventListener("pointercancel", onGestureCancel);
@@ -683,7 +729,7 @@ function startDragging() {
 }
 function updateGhost() {
   if (!gesture || !gesture.ghost) return;
-  const destination = dropTarget(gesture.x, gesture.y, gesture.duration);
+  const destination = dropTarget(gesture.x, gesture.y, gesture.duration, gesture.grabOffset);
   const name = gesture.data.kind === "new" ? gesture.data.team : gesture.data.event.teams.join(", ") || typeLabel(gesture.data.event.type);
   gesture.ghost.style.left = `${gesture.x}px`;
   gesture.ghost.style.top = `${gesture.y}px`;
@@ -695,13 +741,11 @@ function onGestureMove(event) {
   gesture.x = event.clientX;
   gesture.y = event.clientY;
   const distance = Math.hypot(gesture.x - gesture.startX, gesture.y - gesture.startY);
-  if (!gesture.dragging && gesture.data.kind === "new" && distance >= 6) startDragging();
-  if (!gesture.dragging && gesture.data.kind === "move" && distance >= 10) { clearTimeout(gesture.timer); gesture.cancelled = true; }
+  if (!gesture.dragging && distance >= 6) startDragging();
   if (gesture.dragging) { event.preventDefault(); updateGhost(); }
 }
 function clearGesture() {
   if (!gesture) return;
-  clearTimeout(gesture.timer);
   if (gesture.ghost) gesture.ghost.remove();
   gesture.target.removeEventListener("pointermove", onGestureMove);
   gesture.target.removeEventListener("pointerup", onGestureEnd);
@@ -712,7 +756,7 @@ function clearGesture() {
 function onGestureEnd(event) {
   if (!gesture || event.pointerId !== gesture.pointerId) return;
   const current = gesture;
-  const destination = current.dragging ? dropTarget(event.clientX, event.clientY, current.duration) : null;
+  const destination = current.dragging ? dropTarget(event.clientX, event.clientY, current.duration, current.grabOffset) : null;
   const wasDragging = current.dragging;
   clearGesture();
   if (!wasDragging) return;
@@ -804,14 +848,33 @@ function trainingDefaults(teams) {
     size: teams.length ? Math.max(...settings.map(item => item.size)) : ""
   };
 }
+function useTeamBatch() {
+  return !editingEvent && $("#eventType").value === "training" && selectedEventTeams().length > 1;
+}
+function updateBatchFields() {
+  const batch = useTeamBatch();
+  $("#eventEndField").classList.toggle("hidden", batch);
+  $("#eventEnd").disabled = batch;
+  $("#eventSizeField").classList.toggle("hidden", batch);
+  $("#eventSize").disabled = batch;
+  const preview = $("#teamBatchPreview");
+  preview.classList.toggle("hidden", !batch);
+  if (!batch) return;
+  const sizeLabels = {0.25:"¼ hřiště", 0.5:"½ hřiště", 1:"celé hřiště"};
+  preview.textContent = selectedEventTeams().map(team => {
+    const { duration, size } = trainingDefaults([team]);
+    return `${team}: ${duration} min, ${sizeLabels[size]}`;
+  }).join(" · ");
+}
 function applyNewEventDefaults(updateSize) {
   const type = $("#eventType").value;
   const settings = type === "training" ? trainingDefaults(selectedEventTeams()) :
     { duration:DEFAULT_DURATION, size:type === "blocked" ? 1 : "" };
   const start = minutes($("#eventStart").value);
   const end = start + settings.duration;
-  $("#eventEnd").value = Number.isFinite(end) && end <= END_MINUTES ? formatTime(end) : "";
+  setEventTime($("#eventEnd"), Number.isFinite(end) && end <= END_MINUTES ? formatTime(end) : "");
   if (updateSize) $("#eventSize").value = String(settings.size);
+  updateBatchFields();
 }
 function updateTeamLink() {
   $("#copyTeamLink").classList.toggle("hidden", !$("#teamFilter").value);
@@ -851,7 +914,7 @@ function openNewEvent(team = "", destination = null, type = "training") {
   const today = dateKey(new Date()), first = dateKey(currentWeek), last = dateKey(addDays(currentWeek, 6));
   $("#eventDate").value = destination ? destination.date : (today >= first && today <= last ? today : first);
   const start = destination ? destination.start : TRAINING_START_MINUTES;
-  $("#eventStart").value = formatTime(start);
+  setEventTime($("#eventStart"), formatTime(start));
   applyNewEventDefaults(true);
   $("#eventNote").value = "";
   $("#eventError").classList.add("hidden");
@@ -866,11 +929,12 @@ function openEditEvent(event) {
     event.repeat ? "Upravit celou sérii" : "Upravit akci";
   $("#eventType").value = event.type;
   $("#eventDate").value = event.date;
-  $("#eventStart").value = event.start;
-  $("#eventEnd").value = event.end;
+  setEventTime($("#eventStart"), event.start, true);
+  setEventTime($("#eventEnd"), event.end, true);
   $("#eventLocation").value = event.location;
   $("#eventSize").value = event.size == null ? "" : String(event.size);
   $("#eventNote").value = event.note;
+  updateBatchFields();
   $("#eventError").classList.add("hidden");
   openModal("eventModal");
 }
@@ -915,6 +979,8 @@ async function loadData(silent = false) {
     const events = data.events.map(normalizeEvent);
     if (events.some(event => !event)) throw new Error("Některé akce mají neplatné údaje. Zkontroluj list Akce v tabulce.");
     repeatAvailable = data.weeklyRepeat === true;
+    teamAdminAvailable = data.teamAdmin === true;
+    $("#editTeamDefaults").classList.toggle("hidden", !teamAdminAvailable);
     sourceTeams = teams;
     teamDefaults = new Map((Array.isArray(data.teamDefaults) ? data.teamDefaults : [])
       .filter(item => item && teams.includes(item.team) && Number.isInteger(item.duration) &&
@@ -940,15 +1006,19 @@ async function loadData(silent = false) {
     loading = false;
   }
 }
-async function postAction(action, data) {
-  if (!connected || !adminMode || !adminPassword) throw new Error("Nejdřív načti rozpis a otevři administraci.");
+async function postAction(action, data, loginPassword) {
+  const verifying = action === "verifyAdmin";
+  const password = verifying ? loginPassword : adminPassword;
+  if (!connected || !password || (!verifying && !adminMode)) {
+    throw new Error("Nejdřív načti rozpis a otevři administraci.");
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
     const response = await fetch(API_URL, {
       method:"POST",
       headers:{ "Content-Type":"text/plain;charset=utf-8" },
-      body:JSON.stringify({ action, password:adminPassword, ...data }),
+      body:JSON.stringify({ action, password, ...data }),
       signal:controller.signal,
       credentials:"omit"
     });
@@ -961,6 +1031,9 @@ async function postAction(action, data) {
     }
     return result.data;
   } catch (error) {
+    if (verifying && (error.name === "AbortError" || error instanceof TypeError || error instanceof SyntaxError)) {
+      throw new Error("Heslo se nepodařilo ověřit. Zkus přihlášení znovu.");
+    }
     if (error.name === "AbortError") {
       throw new Error("Server neodpověděl včas. Není jisté, zda se změna uložila; před opakováním obnov rozpis.");
     }
@@ -976,6 +1049,7 @@ function beginSaving() {
   if (saving || loading || !connected) return false;
   saving = true;
   $("#saveEvent").disabled = true;
+  $("#saveTeamDefaults").disabled = true;
   $("#adminButton").disabled = true;
   $("#addBlocked").disabled = true;
   $("#addMatch").disabled = true;
@@ -985,6 +1059,7 @@ function beginSaving() {
 function endSaving() {
   saving = false;
   $("#saveEvent").disabled = false;
+  $("#saveTeamDefaults").disabled = false;
   $("#adminButton").disabled = false;
   $("#addBlocked").disabled = false;
   $("#addMatch").disabled = false;
@@ -1063,19 +1138,82 @@ $("#adminButton").addEventListener("click", () => {
     return;
   }
   if (!connected) { setStatus("Nejdřív načti společný rozpis.", true, true); return; }
+  if (loginPending) return;
   $("#adminPassword").value = "";
+  $("#loginError").classList.add("hidden");
   openModal("loginModal");
   $("#adminPassword").focus();
 });
-$("#loginForm").addEventListener("submit", event => {
+$("#loginForm").addEventListener("submit", async event => {
   event.preventDefault();
-  adminPassword = $("#adminPassword").value;
-  if (!adminPassword) return;
-  $("#adminPassword").value = "";
-  adminMode = true;
-  closeModal("loginModal");
-  updateAdminView();
-  setStatus("Administrace je otevřená. Heslo server ověří při prvním zápisu.");
+  const input = $("#adminPassword"), password = input.value;
+  if (loginPending || !password) return;
+  loginPending = true;
+  const submit = $("#submitLogin");
+  submit.disabled = true;
+  submit.textContent = "Ověřuji heslo…";
+  $("#loginError").classList.add("hidden");
+  try {
+    const result = await postAction("verifyAdmin", {}, password);
+    if (!result || result.verified !== true) throw new Error("Server nepotvrdil přihlášení.");
+    if (activeModal !== "loginModal") return;
+    adminPassword = password;
+    adminMode = true;
+    closeModal("loginModal");
+    updateAdminView();
+    setStatus("Jsi přihlášený do administrace.");
+  } catch (error) {
+    if (activeModal === "loginModal") {
+      const message = error.code === "BAD_ACTION" ? "Pro přihlášení aktualizuj nasazení Apps Scriptu." : error.message;
+      showFormError($("#loginError"), message);
+      input.focus();
+    }
+  } finally {
+    input.value = "";
+    loginPending = false;
+    submit.disabled = false;
+    submit.textContent = "Přihlásit se";
+  }
+});
+fillTimeOptions($("#eventStart"), START_MINUTES, END_MINUTES - DRAG_STEP_MINUTES);
+fillTimeOptions($("#eventEnd"), START_MINUTES + DRAG_STEP_MINUTES, END_MINUTES);
+function showTeamSettings() {
+  const team = $("#settingsTeam").value;
+  if (!team) return;
+  const { duration, size } = trainingDefaults([team]);
+  $("#settingsDuration").value = String(duration);
+  $("#settingsSize").value = String(size);
+  $("#settingsError").classList.add("hidden");
+}
+$("#editTeamDefaults").addEventListener("click", () => {
+  if (!adminMode || !connected || saving || !teamAdminAvailable) return;
+  populateSelect($("#settingsTeam"), "", sourceTeams, false);
+  showTeamSettings();
+  openModal("teamSettingsModal");
+});
+for (let duration = 15; duration <= 1020; duration += 15) {
+  const option = makeElement("option", "", formatDuration(duration));
+  option.value = String(duration);
+  $("#settingsDuration").appendChild(option);
+}
+$("#settingsTeam").addEventListener("change", showTeamSettings);
+$("#teamSettingsForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!adminMode || !teamAdminAvailable || !beginSaving()) return;
+  const team = $("#settingsTeam").value;
+  const duration = Number($("#settingsDuration").value);
+  const size = Number($("#settingsSize").value);
+  $("#settingsError").classList.add("hidden");
+  try {
+    await postAction("saveTeamDefaults", { team, duration, size });
+    teamDefaults.set(team, { team, duration, size });
+    closeModal("teamSettingsModal");
+    setStatus(`Nastavení týmu ${team} bylo uloženo do Google tabulky.`);
+  } catch (error) {
+    await handleWriteError(error, $("#settingsError"));
+  } finally {
+    endSaving();
+  }
 });
 $("#addBlocked").addEventListener("click", () => openNewEvent("", null, "blocked"));
 $("#addMatch").addEventListener("click", () => openNewEvent("", null, "match"));
@@ -1096,18 +1234,23 @@ $("#eventForm").addEventListener("submit", async event => {
   if (!adminMode || !connected) { showFormError($("#eventError"), "Nejdřív znovu načti rozpis a otevři administraci."); return; }
   const teams = selectedEventTeams();
   const date = $("#eventDate").value, type = $("#eventType").value;
+  const batch = useTeamBatch();
+  if (batch && !teamAdminAvailable) {
+    showFormError($("#eventError"), "Pro hromadné přidání aktualizuj nasazení Apps Scriptu.");
+    return;
+  }
   const start = minutes($("#eventStart").value), end = minutes($("#eventEnd").value);
   const location = $("#eventLocation").value;
-  if ((type !== "blocked" && !teams.length) || !parseDateKey(date) || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || !location) {
+  if ((type !== "blocked" && !teams.length) || !parseDateKey(date) || !Number.isFinite(start) || (!batch && (!Number.isFinite(end) || end <= start)) || !location) {
     showFormError($("#eventError"), "Vyplň tým, sportoviště, platné datum a čas. U blokace není tým povinný; konec musí být po začátku.");
     return;
   }
-  if (start < START_MINUTES || end > END_MINUTES) {
+  if (start < START_MINUTES || (!batch && end > END_MINUTES)) {
     showFormError($("#eventError"), "Akce musí být v rozsahu kalendáře 06:00–23:00.");
     return;
   }
   const item = {
-    date, start:formatTime(start), end:formatTime(end),
+    date, start:formatTime(start), end:batch ? "" : formatTime(end),
     teams, location, type, note:$("#eventNote").value.trim()
   };
   if ($("#eventSize").value) item.size = Number($("#eventSize").value);
@@ -1128,7 +1271,7 @@ $("#eventForm").addEventListener("submit", async event => {
   $("#eventError").classList.add("hidden");
   setStatus("Ukládám akci…");
   try {
-    await postAction("saveEvent", { event:item });
+    await postAction(batch ? "saveTeamTrainings" : "saveEvent", { event:item });
     if (!editingEvent || !editingEvent.repeat || editingEvent.occurrence) currentWeek = startOfWeek(parseDateKey(date));
     closeModal("eventModal");
     endSaving();
@@ -1136,7 +1279,7 @@ $("#eventForm").addEventListener("submit", async event => {
     if (loaded) {
       const hiddenByFilter = ($("#teamFilter").value && !item.teams.includes($("#teamFilter").value)) ||
         ($("#locationFilter").value && $("#locationFilter").value !== location);
-      setStatus(hiddenByFilter ? "Akce byla uložena, ale aktuální filtr ji skrývá." : "Akce byla uložena do společného rozpisu.");
+      setStatus(hiddenByFilter ? "Akce byla uložena, ale aktuální filtr ji skrývá." : batch ? `Uloženy tréninky týmů: ${teams.join(", ")}.` : "Akce byla uložena do společného rozpisu.");
     }
     return;
   } catch (error) {
